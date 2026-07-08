@@ -1,0 +1,113 @@
+.content-root {
+    flex-grow: 1;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.clear-button {
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: space-around;
+    align-items: auto;
+    align-self: flex-start;
+    height: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-left-color: rgb(89, 89, 89);
+    border-right-color: rgb(89, 89, 89);
+    border-top-color: rgb(89, 89, 89);
+    border-bottom-color: rgb(89, 89, 89);
+    border-right-width: 1px;
+}
+
+.clear-button:hover {
+    background-color: rgb(70, 70, 70);
+}
+
+.unity-popup-field__input {
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 1px;
+    border-left-color: rgb(35, 35, 35);
+    border-right-color: rgb(35, 35, 35);
+    border-top-color: rgb(35, 35, 35);
+    border-bottom-color: rgb(35, 35, 35);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.unity-popup-field:hover {
+    background-color: rgb(70, 70, 70);
+}
+
+.scroll-view-content {
+    flex-grow: 1;
+    background-color: rgb(56, 56, 56);
+}
+
+.message-text {
+    padding-top: 2px;
+    padding-right: 2px;
+    padding-bottom: 2px;
+    padding-left: 2px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    white-space: normal;
+    -unity-text-align: upper-left;
+    color: rgb(255, 255, 255);
+    font-size: 14px;
+}
+
+.message-warning {
+    padding-top: 2px;
+    padding-right: 2px;
+    padding-bottom: 2px;
+    padding-left: 2px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    white-space: normal;
+    -unity-text-align: upper-left;
+    color: rgb(255, 227, 92);
+    font-size: 14px;
+}
+
+.message-error {
+    padding-top: 2px;
+    padding-right: 2px;
+    padding-bottom: 2px;
+    padding-left: 2px;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    white-space: normal;
+    -unity-text-align: upper-left;
+    color: rgb(255, 89, 89);
+    font-size: 14px;
+}
+
+.even-element {
+    background-color: rgb(64, 64, 64);
+}
