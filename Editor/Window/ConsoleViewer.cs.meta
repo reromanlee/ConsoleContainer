@@ -7,6 +7,7 @@ MonoImporter:
   - m_ViewDataDictionary: {instanceID: 0}
   - windowIconDark: {fileID: 2800000, guid: 14f03de8a7c5d9543aee0043237d84fa, type: 3}
   - windowIconLight: {fileID: 2800000, guid: d3ad80c4b750d3748bd70c14e8fddba9, type: 3}
+  - consoleViewerAsset: {fileID: 9197481963319205126, guid: fbd09c8d7cd32064898d4ed7d266f022, type: 3}
   executionOrder: 0
   icon: {instanceID: 0}
   userData: 

@@ -1,5 +1,6 @@
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.UIElements;
 
 namespace reromanlee.ConsoleContainer.Editor
 {
@@ -9,6 +10,10 @@ namespace reromanlee.ConsoleContainer.Editor
 
         [SerializeField] private Texture2D windowIconDark;
         [SerializeField] private Texture2D windowIconLight;
+
+        [SerializeField] private VisualTreeAsset consoleViewerAsset;
+
+        private VisualElement consoleViewerElement;
 
         [MenuItem("Tools/Console Viewer")]
         public static void ShowWindow()
@@ -24,6 +29,18 @@ namespace reromanlee.ConsoleContainer.Editor
             }
             window.minSize = new Vector2(600, 400);
             window.Show();
+        }
+
+        private void OnEnable()
+        {
+            consoleViewerElement = consoleViewerAsset.CloneTree();
+            consoleViewerElement.style.flexGrow = 1;
+            rootVisualElement.Add(consoleViewerElement);
+        }
+
+        private void OnDisable()
+        {
+
         }
     }
 }
