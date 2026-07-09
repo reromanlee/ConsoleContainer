@@ -63,51 +63,19 @@
     background-color: rgb(56, 56, 56);
 }
 
-.message-text {
-    padding-top: 2px;
-    padding-right: 2px;
-    padding-bottom: 2px;
-    padding-left: 2px;
+.message-label {
     margin-top: 0;
-    margin-right: 0;
+    margin-right: 3px;
     margin-bottom: 0;
     margin-left: 0;
-    white-space: normal;
-    -unity-text-align: upper-left;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
     color: rgb(255, 255, 255);
-    font-size: 14px;
+    -unity-text-align: middle-center;
 }
 
-.message-warning {
-    padding-top: 2px;
-    padding-right: 2px;
-    padding-bottom: 2px;
-    padding-left: 2px;
-    margin-top: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-    margin-left: 0;
-    white-space: normal;
-    -unity-text-align: upper-left;
-    color: rgb(255, 227, 92);
-    font-size: 14px;
-}
-
-.message-error {
-    padding-top: 2px;
-    padding-right: 2px;
-    padding-bottom: 2px;
-    padding-left: 2px;
-    margin-top: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-    margin-left: 0;
-    white-space: normal;
-    -unity-text-align: upper-left;
-    color: rgb(255, 89, 89);
-    font-size: 14px;
-}
-
-.even-element {
-    background-color: rgb(64, 64, 64);
+.message-even {
+    background-color: rgba(255, 255, 255, 0.05);
 }
