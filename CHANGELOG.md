@@ -25,13 +25,17 @@ Initial release.
     instance's messages in chronological order.
   - `Text` / `Warning` / `Error` rows rendered from visual tree assets, with
     per-type icons/colors, `[HH:mm:ss]` timestamps and even-row zebra striping.
-  - Message selection showing the full `{source}: {content}` text, a **Copy**
-    button, and a call stack rendered as buttons that open the file at its line
-    in the external IDE (top button = the log call site).
+  - Message selection: the details pane shows the full `{source}: {content}`
+    text followed by the complete stack trace (like the Unity Console), a
+    **Copy** button, and the same call stack rendered on the left as buttons
+    that open the file at its line in the external IDE (top button = the log
+    call site).
   - **Clear** button that clears the selected instance, or all of them when
     *All Instances* is selected.
   - Incremental rendering (append-only) with auto-scroll when pinned to the
     bottom; full rebuilds only on instance-set or clear changes.
+  - Instances and their messages remain viewable after Play Mode ends (flagged
+    `(disposed)` in the dropdown) until the next domain reload.
 - **Editor vs. player build separation** — in the editor, messages appear only
   in the Console Viewer and never reach the Unity Console.
 - **Optional build logging** — `ConsoleContainerSettings` ScriptableObject
