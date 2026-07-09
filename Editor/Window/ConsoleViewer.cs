@@ -360,7 +360,9 @@ namespace reromanlee.ConsoleContainer.Editor
         {
             if (selectedMessage != null)
             {
-                EditorGUIUtility.systemCopyBuffer = selectedMessage.Label;
+                // Copy the full details (message + stack trace) so it can be pasted
+                // straight into a chat/issue for investigation.
+                EditorGUIUtility.systemCopyBuffer = BuildDetails(selectedMessage);
             }
         }
 
