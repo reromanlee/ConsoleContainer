@@ -12,6 +12,9 @@ namespace reromanlee.ConsoleContainer.Editor
         [SerializeField] private Texture2D windowIconLight;
 
         [SerializeField] private VisualTreeAsset consoleViewerAsset;
+        [SerializeField] private VisualTreeAsset messageTextAsset;
+        [SerializeField] private VisualTreeAsset messageWarningAsset;
+        [SerializeField] private VisualTreeAsset messageErrorAsset;
 
         private VisualElement consoleViewerElement;
 
