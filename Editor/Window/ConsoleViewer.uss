@@ -153,3 +153,8 @@
     -unity-text-align: middle-left;
     overflow: hidden;
 }
+
+/* Kept last and doubled-up so a selected row wins the tie against :hover. */
+.message-container.message-container-selected {
+    background-color: rgb(44, 93, 135);
+}

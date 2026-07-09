@@ -20,12 +20,8 @@
                 </ui:VisualElement>
                 <ui:ScrollView vertical-scroller-visibility="AlwaysVisible" class="scroll-view-content" style="min-height: 150px;">
                     <ui:TwoPaneSplitView orientation="Horizontal" fixed-pane-index="0" fixed-pane-initial-dimension="150" style="flex-shrink: 0;">
-                        <ui:VisualElement name="selected-message-callstack-container" style="flex-grow: 1; flex-shrink: 0; min-width: 150px;">
-                            <ui:Button text="ClassCaller.cs:15" class="callstack-button"/>
-                            <ui:Button text="MiddleClass.cs:295" class="callstack-button"/>
-                            <ui:Button text="OtherClass.cs:2142" name="" enable-rich-text="false" class="callstack-button"/>
-                        </ui:VisualElement>
-                        <ui:Label text="Selected message content goes here to be fully visible to the user and it also supports multiple lines that&apos;s why it is so needed. Actually it is the same principle as standard Unity Console is made!" name="selected-message-label" class="message-label" style="flex-wrap: wrap; flex-shrink: 1; flex-grow: 1; white-space: normal; flex-direction: column; min-width: 150px; padding-top: 3px; padding-right: 3px; padding-bottom: 3px; padding-left: 3px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0;"/>
+                        <ui:VisualElement name="selected-message-callstack-container" style="flex-grow: 1; flex-shrink: 0; min-width: 150px;"/>
+                        <ui:Label text="" name="selected-message-label" class="message-label" style="flex-wrap: wrap; flex-shrink: 1; flex-grow: 1; white-space: normal; flex-direction: column; min-width: 150px; padding-top: 3px; padding-right: 3px; padding-bottom: 3px; padding-left: 3px; margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0;"/>
                     </ui:TwoPaneSplitView>
                 </ui:ScrollView>
             </ui:VisualElement>
