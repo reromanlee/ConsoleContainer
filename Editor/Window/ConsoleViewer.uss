@@ -79,3 +79,7 @@
 .message-even {
     background-color: rgba(255, 255, 255, 0.05);
 }
+
+.label-warning {
+    color: rgb(254, 193, 7);
+}
