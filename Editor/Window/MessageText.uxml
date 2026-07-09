@@ -3,6 +3,6 @@
     <ui:VisualElement name="message-container" focusable="true" class="message-container">
         <ui:VisualElement name="" style="flex-shrink: 0; width: 16px; height: 16px; background-image: url(&quot;project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/info.png?fileID=2800000&amp;guid=82f57434a9e7fca479ac49d21bc55e98&amp;type=3#info&quot;); margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0;"/>
         <ui:Label tabindex="-1" text="[17:15:49]" parse-escape-sequences="true" display-tooltip-when-elided="true" name="message-time" class="message-label" style="-unity-text-align: upper-left;"/>
-        <ui:Label tabindex="-1" text="Message content goes here and should be  wrapped in multiple lines" parse-escape-sequences="true" display-tooltip-when-elided="true" name="message-label" class="message-label" style="margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0; flex-wrap: wrap; white-space: normal; -unity-text-align: upper-left; flex-shrink: 1;"/>
+        <ui:Label tabindex="-1" text="Message content goes here and should be  wrapped in multiple lines" parse-escape-sequences="true" display-tooltip-when-elided="true" name="message-label" class="message-label"/>
     </ui:VisualElement>
 </ui:UXML>
