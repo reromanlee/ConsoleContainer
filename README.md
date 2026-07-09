@@ -82,6 +82,13 @@ public class NetworkService
 
 Open the window from **`Tools ▸ Console Viewer`**.
 
+### Try the sample
+
+In the Package Manager, select ConsoleContainer and import the **Console
+Container Demo** sample. Drop `ConsoleContainerDemo` on a GameObject, press
+Play, open the viewer, and switch the dropdown between the running instances
+(one of which logs from a background thread).
+
 ---
 
 ## Logging API

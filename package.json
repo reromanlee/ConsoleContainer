@@ -20,5 +20,12 @@
     "name": "Roman Likhadievski",
     "url": "https://github.com/reromanlee",
     "email": "contact@reromanlee.com"
-  }
+  },
+  "samples": [
+    {
+      "displayName": "Console Container Demo",
+      "description": "A MonoBehaviour that spins up several named console instances and logs to them continuously — including from a background thread — to showcase the Console Viewer.",
+      "path": "Samples~/ConsoleContainerDemo"
+    }
+  ]
 }
