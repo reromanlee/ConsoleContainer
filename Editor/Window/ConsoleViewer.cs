@@ -48,6 +48,7 @@ namespace reromanlee.ConsoleContainer.Editor
         private readonly List<ConsoleMessage> scratch = new List<ConsoleMessage>();
         private volatile bool dirty;
         private bool suppressDropdownCallback;
+        private bool stickToBottom = true;
 
         [MenuItem("Tools/Console Viewer")]
         public static void ShowWindow()
@@ -79,6 +80,12 @@ namespace reromanlee.ConsoleContainer.Editor
             copyButton.RegisterCallback<ClickEvent>(OnCopyClicked);
             instanceDropdown.RegisterValueChangedCallback(OnDropdownChanged);
 
+            contentContainer.RegisterCallback<GeometryChangedEvent>(OnContentGeometryChanged);
+            if (contentScrollView != null)
+            {
+                contentScrollView.verticalScroller.valueChanged += OnUserScrolled;
+            }
+
             ResetDetails();
 
             ConsoleRegistry.Changed += OnRegistryChanged;
@@ -93,6 +100,11 @@ namespace reromanlee.ConsoleContainer.Editor
         {
             ConsoleRegistry.Changed -= OnRegistryChanged;
             EditorApplication.update -= OnEditorUpdate;
+
+            if (contentScrollView != null)
+            {
+                contentScrollView.verticalScroller.valueChanged -= OnUserScrolled;
+            }
         }
 
         // Raised from arbitrary threads — only flip a flag and let the main-thread
@@ -191,6 +203,7 @@ namespace reromanlee.ConsoleContainer.Editor
             contentContainer.Clear();
             lastRenderedSequence = 0;
             renderedRowCount = 0;
+            stickToBottom = true;
             ResetDetails();
             AppendNewMessages();
         }
@@ -220,8 +233,6 @@ namespace reromanlee.ConsoleContainer.Editor
             // global sequence only grows, this batch always appends at the end.
             scratch.Sort(CompareBySequence);
 
-            bool wasAtBottom = IsScrolledToBottom();
-
             foreach (ConsoleMessage message in scratch)
             {
                 VisualElement row = CreateRow(message);
@@ -235,10 +246,8 @@ namespace reromanlee.ConsoleContainer.Editor
                 lastRenderedSequence = message.Sequence;
             }
 
-            if (wasAtBottom)
-            {
-                ScrollToBottomDeferred();
-            }
+            // Sticking to the bottom is handled by OnContentGeometryChanged, which
+            // runs after the new rows are laid out (so highValue is up to date).
         }
 
         private VisualElement CreateRow(ConsoleMessage message)
@@ -370,29 +379,39 @@ namespace reromanlee.ConsoleContainer.Editor
         private static string ToSingleLine(string text)
             => string.IsNullOrEmpty(text) ? text : text.Replace('\r', ' ').Replace('\n', ' ');
 
-        private bool IsScrolledToBottom()
+        // Fires after new rows (or a resize) are laid out, when highValue is
+        // accurate — so if we're sticking, we land exactly at the bottom.
+        private void OnContentGeometryChanged(GeometryChangedEvent evt)
         {
-            Scroller scroller = contentScrollView?.verticalScroller;
-            if (scroller == null)
+            if (stickToBottom)
             {
-                return true;
+                ScrollToBottom();
             }
-
-            return scroller.highValue <= 0f || scroller.value >= scroller.highValue - 2f;
         }
 
-        private void ScrollToBottomDeferred()
+        // Any user scroll re-evaluates sticking: pinned at the bottom re-arms it,
+        // scrolling away releases it. Programmatic ScrollToBottom lands on
+        // highValue and therefore keeps it armed.
+        private void OnUserScrolled(float value)
         {
             if (contentScrollView == null)
             {
                 return;
             }
 
-            contentScrollView.schedule.Execute(() =>
+            Scroller scroller = contentScrollView.verticalScroller;
+            stickToBottom = scroller.highValue <= 0f || value >= scroller.highValue - 1f;
+        }
+
+        private void ScrollToBottom()
+        {
+            if (contentScrollView == null)
             {
-                Scroller scroller = contentScrollView.verticalScroller;
-                scroller.value = scroller.highValue;
-            });
+                return;
+            }
+
+            Scroller scroller = contentScrollView.verticalScroller;
+            scroller.value = scroller.highValue;
         }
     }
 }
