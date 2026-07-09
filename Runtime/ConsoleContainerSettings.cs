@@ -35,8 +35,8 @@ namespace reromanlee.ConsoleContainer
         public bool LogWarningsInBuild => logWarningsInBuild;
         public bool LogErrorsInBuild => logErrorsInBuild;
 
-        private static ConsoleContainerSettings _active;
-        private static bool _loaded;
+        private static volatile ConsoleContainerSettings _active;
+        private static volatile bool _loaded;
 
         /// <summary>
         /// The active settings asset loaded from <c>Resources</c>, or <c>null</c>
