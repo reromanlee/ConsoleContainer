@@ -100,3 +100,43 @@
 .message-container-even {
     background-color: rgba(255, 255, 255, 0.05);
 }
+
+#unity-content-container {
+    flex-shrink: 0;
+    flex-grow: 1;
+}
+
+.header-container {
+    flex-grow: 0;
+    flex-shrink: 0;
+    height: 20px;
+    background-color: rgb(60, 60, 60);
+    border-left-color: rgb(35, 35, 35);
+    border-right-color: rgb(35, 35, 35);
+    border-top-color: rgb(35, 35, 35);
+    border-bottom-color: rgb(35, 35, 35);
+    border-bottom-width: 1px;
+    justify-content: space-between;
+    align-self: auto;
+    flex-direction: row;
+}
+
+.copy-button {
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: space-around;
+    align-items: auto;
+    align-self: flex-start;
+    height: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-left-color: rgb(89, 89, 89);
+    border-right-color: rgb(89, 89, 89);
+    border-top-color: rgb(89, 89, 89);
+    border-bottom-color: rgb(89, 89, 89);
+    border-left-width: 1px;
+}
+
+.copy-button:hover {
+    background-color: rgb(70, 70, 70);
+}
