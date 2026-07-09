@@ -76,10 +76,24 @@
     -unity-text-align: middle-center;
 }
 
-.message-even {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
 .label-warning {
     color: rgb(254, 193, 7);
+}
+
+.label-error {
+    color: rgb(255, 110, 63);
+}
+
+.message-container {
+    flex-direction: row;
+    flex-shrink: 0;
+    flex-grow: 0;
+}
+
+.message-container:hover {
+    background-color: rgba(255, 255, 255, 0.102);
+}
+
+.message-container-even {
+    background-color: rgba(255, 255, 255, 0.05);
 }
