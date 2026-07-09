@@ -1,7 +1,7 @@
 <ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" xsi="http://www.w3.org/2001/XMLSchema-instance" engine="UnityEngine.UIElements" editor="UnityEditor.UIElements" noNamespaceSchemaLocation="../../../UIElementsSchema/UIElements.xsd" editor-extension-mode="False">
     <Style src="project://database/Packages/com.reromanlee.consolecontainer/Editor/Window/ConsoleViewer.uss?fileID=7433441132597879392&amp;guid=7684bd65830b8614186062a2133841db&amp;type=3#ConsoleViewer"/>
     <ui:VisualElement name="message-container" focusable="true" class="message-container">
-        <ui:VisualElement name="" style="flex-shrink: 0; width: 16px; height: 16px; background-image: url(&quot;project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/warning.png?fileID=2800000&amp;guid=8d98323fa783d0a47a1498bcc7fb5a98&amp;type=3#warning&quot;); margin-top: 0; margin-right: 0; margin-bottom: 0; margin-left: 0;"/>
+        <ui:VisualElement name="" class="message-icon" style="background-image: url(&quot;project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/warning.png?fileID=2800000&amp;guid=8d98323fa783d0a47a1498bcc7fb5a98&amp;type=3#warning&quot;);"/>
         <ui:Label tabindex="-1" text="[17:15:49]" parse-escape-sequences="true" display-tooltip-when-elided="true" name="message-time" class="message-label label-warning" style="-unity-text-align: upper-left;"/>
         <ui:Label tabindex="-1" text="Message content goes here and should be  wrapped in multiple lines" parse-escape-sequences="true" display-tooltip-when-elided="true" name="message-label" class="message-label label-warning"/>
     </ui:VisualElement>

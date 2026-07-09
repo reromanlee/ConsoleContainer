@@ -76,6 +76,8 @@
     -unity-text-align: upper-left;
     white-space: nowrap;
     flex-shrink: 0;
+    font-size: 12px;
+    -unity-font-style: normal;
 }
 
 .label-warning {
@@ -91,6 +93,9 @@
     flex-shrink: 0;
     flex-grow: 0;
     overflow: hidden;
+    align-items: center;
+    padding-top: 1px;
+    padding-bottom: 1px;
 }
 
 .message-container:hover {
@@ -154,7 +159,17 @@
     overflow: hidden;
 }
 
-/* Kept last and doubled-up so a selected row wins the tie against :hover. */
 .message-container.message-container-selected {
     background-color: rgb(44, 93, 135);
+}
+
+.message-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/info.png?fileID=2800000&guid=82f57434a9e7fca479ac49d21bc55e98&type=3#info");
+    margin-top: 0;
+    margin-right: 3px;
+    margin-bottom: 0;
+    margin-left: 3px;
 }
