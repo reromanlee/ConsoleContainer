@@ -9,7 +9,7 @@ a purpose-built editor window. Each message keeps its timestamp, source and full
 call stack, and every stack frame is clickable straight into your IDE, exactly
 like the built-in Unity Console.
 
----
+![Console viewer window showcase](.github/readme-console-viewer.gif)
 
 ## Why use it instead of the Unity Console?
 
@@ -29,8 +29,6 @@ like the built-in Unity Console.
   with an independent toggle per message type.
 - **Thread-safe.** Log from jobs, background threads or async code without
   worrying about where the call comes from.
-
----
 
 ## Installation (UPM)
 
@@ -59,8 +57,6 @@ folder.
 
 > Requires **Unity 6000.0 (Unity 6)** or newer.
 
----
-
 ## Quick start
 
 ```csharp
@@ -88,8 +84,6 @@ In the Package Manager, select ConsoleContainer and import the **Console
 Container Demo** sample. Drop `ConsoleContainerDemo` on a GameObject, press
 Play, open the viewer, and switch the dropdown between the running instances
 (one of which logs from a background thread).
-
----
 
 ## Logging API
 
@@ -135,8 +129,6 @@ instance.Clear(); // remove this instance's messages
 instance.Dispose();// clear and detach from the viewer
 ```
 
----
-
 ## The Console Viewer window
 
 | Feature | Behaviour |
@@ -147,8 +139,6 @@ instance.Dispose();// clear and detach from the viewer
 | **Copy** | Copies the selected message to the system clipboard. |
 | **Call stack** | Each frame becomes a button — top button is the log call site, going down the chain — that opens the file at its line in your IDE. |
 | **Clear** | Clears the currently selected instance, or **all** of them when *All Instances* is selected. |
-
----
 
 ## Editor vs. player builds
 
@@ -175,8 +165,6 @@ If **no** settings asset exists in the build, all ConsoleContainer messages stay
 hidden. This lets you keep verbose instrumentation in your code and decide, per
 project, exactly what (if anything) surfaces in shipped logs.
 
----
-
 ## Performance
 
 - **Editor-only cost.** Message storage and call-stack capture happen only under
@@ -194,8 +182,6 @@ project, exactly what (if anything) surfaces in shipped logs.
 
 Best suited to typical debugging volumes. For sustained, extremely high-rate
 logging, prefer a dedicated instance you can `Clear()` periodically.
-
----
 
 ## License
 
