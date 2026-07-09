@@ -2,12 +2,19 @@
   "name": "com.reromanlee.consolecontainer",
   "version": "1.0.0",
   "displayName": "ConsoleContainer",
-  "description": "",
+  "description": "Per-context logging containers that keep debug output out of the Unity Console. Create named console instances, view them in a dedicated editor window with chronological merging and IDE call-stack navigation, and optionally forward messages to Debug logs in player builds.",
   "unity": "6000.0",
   "license": "MIT",
   "documentationUrl": "https://github.com/reromanlee/ConsoleContainer#readme",
   "changelogUrl": "https://github.com/reromanlee/ConsoleContainer/blob/main/CHANGELOG.md",
-  "keywords": [],
+  "keywords": [
+    "console",
+    "logging",
+    "debug",
+    "editor",
+    "logger",
+    "uielements"
+  ],
   "licensesUrl": "https://github.com/reromanlee/ConsoleContainer/blob/main/LICENSE.md",
   "author": {
     "name": "Roman Likhadievski",
