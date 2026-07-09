@@ -16,6 +16,11 @@ namespace reromanlee.ConsoleContainer.Editor
         private const string SelectedRowClass = "message-container-selected";
         private const string CallstackButtonClass = "callstack-button";
 
+        // How close to the bottom (in pixels) the scroll must be to keep following
+        // new messages. Scrolling up further than this detaches the view; scrolling
+        // back within it re-attaches. The slack absorbs the per-append layout lag.
+        private const float StickToBottomSlack = 30f;
+
         [SerializeField] private Texture2D windowIconDark;
         [SerializeField] private Texture2D windowIconLight;
 
@@ -48,7 +53,6 @@ namespace reromanlee.ConsoleContainer.Editor
         private readonly List<ConsoleMessage> scratch = new List<ConsoleMessage>();
         private volatile bool dirty;
         private bool suppressDropdownCallback;
-        private bool stickToBottom = true;
 
         [MenuItem("Tools/Console Viewer")]
         public static void ShowWindow()
@@ -80,12 +84,6 @@ namespace reromanlee.ConsoleContainer.Editor
             copyButton.RegisterCallback<ClickEvent>(OnCopyClicked);
             instanceDropdown.RegisterValueChangedCallback(OnDropdownChanged);
 
-            contentContainer.RegisterCallback<GeometryChangedEvent>(OnContentGeometryChanged);
-            if (contentScrollView != null)
-            {
-                contentScrollView.verticalScroller.valueChanged += OnUserScrolled;
-            }
-
             ResetDetails();
 
             ConsoleRegistry.Changed += OnRegistryChanged;
@@ -100,11 +98,6 @@ namespace reromanlee.ConsoleContainer.Editor
         {
             ConsoleRegistry.Changed -= OnRegistryChanged;
             EditorApplication.update -= OnEditorUpdate;
-
-            if (contentScrollView != null)
-            {
-                contentScrollView.verticalScroller.valueChanged -= OnUserScrolled;
-            }
         }
 
         // Raised from arbitrary threads — only flip a flag and let the main-thread
@@ -203,9 +196,10 @@ namespace reromanlee.ConsoleContainer.Editor
             contentContainer.Clear();
             lastRenderedSequence = 0;
             renderedRowCount = 0;
-            stickToBottom = true;
             ResetDetails();
             AppendNewMessages();
+            // A fresh view (instance switch, clear, window open) starts at the newest.
+            ScrollToBottomDeferred();
         }
 
         private void AppendNewMessages()
@@ -233,6 +227,9 @@ namespace reromanlee.ConsoleContainer.Editor
             // global sequence only grows, this batch always appends at the end.
             scratch.Sort(CompareBySequence);
 
+            // Measure before appending, while the scroller still reflects a settled layout.
+            bool followBottom = IsNearBottom();
+
             foreach (ConsoleMessage message in scratch)
             {
                 VisualElement row = CreateRow(message);
@@ -246,8 +243,10 @@ namespace reromanlee.ConsoleContainer.Editor
                 lastRenderedSequence = message.Sequence;
             }
 
-            // Sticking to the bottom is handled by OnContentGeometryChanged, which
-            // runs after the new rows are laid out (so highValue is up to date).
+            if (followBottom)
+            {
+                ScrollToBottomDeferred();
+            }
         }
 
         private VisualElement CreateRow(ConsoleMessage message)
@@ -379,39 +378,46 @@ namespace reromanlee.ConsoleContainer.Editor
         private static string ToSingleLine(string text)
             => string.IsNullOrEmpty(text) ? text : text.Replace('\r', ' ').Replace('\n', ' ');
 
-        // Fires after new rows (or a resize) are laid out, when highValue is
-        // accurate — so if we're sticking, we land exactly at the bottom.
-        private void OnContentGeometryChanged(GeometryChangedEvent evt)
+        // True while the view should follow new messages: no scrollable content
+        // yet, or scrolled to within StickToBottomSlack of the bottom. Evaluated
+        // before rows are appended, while the scroller reflects a settled layout.
+        private bool IsNearBottom()
         {
-            if (stickToBottom)
+            if (contentScrollView == null)
             {
-                ScrollToBottom();
+                return true;
             }
+
+            Scroller scroller = contentScrollView.verticalScroller;
+            return scroller.highValue <= 0f || scroller.value >= scroller.highValue - StickToBottomSlack;
         }
 
-        // Any user scroll re-evaluates sticking: pinned at the bottom re-arms it,
-        // scrolling away releases it. Programmatic ScrollToBottom lands on
-        // highValue and therefore keeps it armed.
-        private void OnUserScrolled(float value)
+        private void ScrollToBottomDeferred()
         {
             if (contentScrollView == null)
             {
                 return;
             }
 
-            Scroller scroller = contentScrollView.verticalScroller;
-            stickToBottom = scroller.highValue <= 0f || value >= scroller.highValue - 1f;
+            // Scheduled items can run before the freshly added rows get a layout, in
+            // which case the scroller range still describes the old content. Snap on
+            // two consecutive ticks: the first covers the case where layout already
+            // ran, the second sees the settled range.
+            ScrollView scrollView = contentScrollView;
+            scrollView.schedule.Execute(() =>
+            {
+                SnapToBottom(scrollView);
+                scrollView.schedule.Execute(() => SnapToBottom(scrollView));
+            });
         }
 
-        private void ScrollToBottom()
+        private static void SnapToBottom(ScrollView scrollView)
         {
-            if (contentScrollView == null)
-            {
-                return;
-            }
-
-            Scroller scroller = contentScrollView.verticalScroller;
-            scroller.value = scroller.highValue;
+            Scroller scroller = scrollView.verticalScroller;
+            // Never below zero: with always-visible scrollers and content shorter
+            // than the viewport, highValue is negative and snapping to it would push
+            // the content downward.
+            scroller.value = Mathf.Max(0f, scroller.highValue);
         }
     }
 }
