@@ -27,6 +27,13 @@ namespace reromanlee.ConsoleContainer.Samples
 
         private void OnEnable()
         {
+            // This is a play-mode showcase (coroutines/threads); do nothing when
+            // the component is merely enabled in edit mode.
+            if (!Application.isPlaying)
+            {
+                return;
+            }
+
             // Naming each instance surfaces it in the viewer's dropdown.
             networking = new ConsoleInstance("Networking");
             ai = new ConsoleInstance("AI");

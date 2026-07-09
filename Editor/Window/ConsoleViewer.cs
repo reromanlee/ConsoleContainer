@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using UnityEditor;
 using UnityEditorInternal;
 using UnityEngine;
@@ -144,7 +145,7 @@ namespace reromanlee.ConsoleContainer.Editor
             int restoredIndex = 0;
             for (int i = 0; i < currentInstances.Length; i++)
             {
-                choices.Add(currentInstances[i].Name);
+                choices.Add(DisplayName(currentInstances[i]));
                 if (currentInstances[i] == previous)
                 {
                     restoredIndex = i + 1;
@@ -267,9 +268,58 @@ namespace reromanlee.ConsoleContainer.Editor
             selectedRow = row;
             row.AddToClassList(SelectedRowClass);
 
-            selectedMessageLabel.text = message.Label;
+            selectedMessageLabel.text = BuildDetails(message);
             BuildCallstack(message);
         }
+
+        // The details label shows the full message followed by a readable stack
+        // trace, mirroring the Unity Console's detail pane.
+        private static string BuildDetails(ConsoleMessage message)
+        {
+            if (message.Callstack.Count == 0)
+            {
+                return message.Label;
+            }
+
+            StringBuilder builder = new StringBuilder(message.Label);
+            builder.Append('\n');
+
+            foreach (CallstackFrame frame in message.Callstack)
+            {
+                builder.Append('\n');
+                if (!string.IsNullOrEmpty(frame.MethodName))
+                {
+                    builder.Append(frame.MethodName).Append(' ');
+                }
+
+                builder.Append("(at ").Append(ProjectRelativePath(frame.FilePath))
+                    .Append(':').Append(frame.Line).Append(')');
+            }
+
+            return builder.ToString();
+        }
+
+        private static string ProjectRelativePath(string absolutePath)
+        {
+            if (string.IsNullOrEmpty(absolutePath))
+            {
+                return absolutePath;
+            }
+
+            string normalized = absolutePath.Replace('\\', '/');
+
+            // Application.dataPath ends with "/Assets"; strip back to the project
+            // root so paths read like "Assets/…" or "Packages/…" as in Unity.
+            string dataPath = Application.dataPath;
+            string projectRoot = dataPath.Substring(0, dataPath.Length - "Assets".Length);
+
+            return normalized.StartsWith(projectRoot, StringComparison.OrdinalIgnoreCase)
+                ? normalized.Substring(projectRoot.Length)
+                : normalized;
+        }
+
+        private static string DisplayName(ConsoleInstance instance)
+            => instance.IsDisposed ? $"{instance.Name} (disposed)" : instance.Name;
 
         private void BuildCallstack(ConsoleMessage message)
         {

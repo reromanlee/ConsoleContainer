@@ -25,7 +25,7 @@ namespace reromanlee.ConsoleContainer
         /// </summary>
         internal static event Action Changed;
 
-        /// <summary>Bumped when the set of registered instances changes.</summary>
+        /// <summary>Bumped when the instance list, or an instance's display state (e.g. disposed), changes.</summary>
         internal static int Version => _version;
 
         /// <summary>Bumped when any instance is cleared (used to trigger a full rebuild).</summary>
@@ -55,24 +55,20 @@ namespace reromanlee.ConsoleContainer
             RaiseChanged();
         }
 
-        internal static void Unregister(ConsoleInstance instance)
+        internal static void NotifyMessageAdded(ConsoleInstance instance)
         {
-            lock (Gate)
-            {
-                if (!Instances.Remove(instance))
-                {
-                    return;
-                }
-
-                _version++;
-                _clearGeneration++;
-            }
-
             RaiseChanged();
         }
 
-        internal static void NotifyMessageAdded(ConsoleInstance instance)
+        internal static void NotifyDisposed(ConsoleInstance instance)
         {
+            // Bump the version so the viewer rebuilds its dropdown with the
+            // "(disposed)" label; the instance stays registered on purpose.
+            lock (Gate)
+            {
+                _version++;
+            }
+
             RaiseChanged();
         }
 

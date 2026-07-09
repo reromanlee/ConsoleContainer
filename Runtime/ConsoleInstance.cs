@@ -33,6 +33,14 @@ namespace reromanlee.ConsoleContainer
         public string Name { get; }
 
         /// <summary>
+        /// True once <see cref="Dispose"/> has been called. Disposed instances
+        /// ignore further logging but keep their messages so they remain
+        /// inspectable in the viewer (flagged "(disposed)") until the next
+        /// domain reload.
+        /// </summary>
+        public bool IsDisposed => _disposed;
+
+        /// <summary>
         /// Creates a new console instance.
         /// </summary>
         /// <param name="name">
@@ -81,7 +89,12 @@ namespace reromanlee.ConsoleContainer
 #endif
         }
 
-        /// <summary>Clears the instance and detaches it from the viewer registry.</summary>
+        /// <summary>
+        /// Marks the instance as disposed so it ignores further logging. Its
+        /// messages and its place in the viewer are intentionally kept (and
+        /// flagged "(disposed)") so they stay inspectable after play mode ends;
+        /// everything is released on the next domain reload.
+        /// </summary>
         public void Dispose()
         {
             if (_disposed)
@@ -91,13 +104,8 @@ namespace reromanlee.ConsoleContainer
 
             _disposed = true;
 
-            lock (_gate)
-            {
-                _messages.Clear();
-            }
-
 #if UNITY_EDITOR
-            ConsoleRegistry.Unregister(this);
+            ConsoleRegistry.NotifyDisposed(this);
 #endif
         }
 
@@ -136,8 +144,6 @@ namespace reromanlee.ConsoleContainer
                 : string.Join(" ", messageContent);
 
 #if UNITY_EDITOR
-        private static readonly string PackageNamespace = typeof(ConsoleInstance).Namespace;
-
         /// <summary>
         /// Copies messages created after <paramref name="afterSequence"/> into
         /// <paramref name="buffer"/>. Consumed by the viewer for incremental
@@ -162,17 +168,6 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
-        internal int Count
-        {
-            get
-            {
-                lock (_gate)
-                {
-                    return _messages.Count;
-                }
-            }
-        }
-
         private static CallstackFrame[] CaptureCallstack()
         {
             StackFrame[] frames = new StackTrace(true).GetFrames();
@@ -187,10 +182,10 @@ namespace reromanlee.ConsoleContainer
                 System.Reflection.MethodBase method = frame.GetMethod();
                 Type declaringType = method?.DeclaringType;
 
-                // Skip this package's own logging plumbing so the top frame is the
-                // caller's actual log site.
-                string ns = declaringType?.Namespace;
-                if (ns != null && ns.StartsWith(PackageNamespace, StringComparison.Ordinal))
+                // Skip only this class's own logging methods so the top frame is
+                // the caller's real log site. Filtering by the package namespace
+                // would wrongly drop user code that lives under it (e.g. samples).
+                if (declaringType == typeof(ConsoleInstance))
                 {
                     continue;
                 }
@@ -203,14 +198,36 @@ namespace reromanlee.ConsoleContainer
                     continue;
                 }
 
-                string methodName = declaringType != null
-                    ? $"{declaringType.Name}.{method.Name}"
-                    : method?.Name;
-
-                result.Add(new CallstackFrame(file, line, methodName));
+                result.Add(new CallstackFrame(file, line, ResolveMethodName(declaringType, method)));
             }
 
             return result.ToArray();
+        }
+
+        // Presents compiler-generated iterator/async frames ("<Method>d__N.MoveNext")
+        // using their original source method name.
+        private static string ResolveMethodName(Type declaringType, System.Reflection.MethodBase method)
+        {
+            if (declaringType == null)
+            {
+                return method?.Name;
+            }
+
+            string typeName = declaringType.Name;
+            string methodName = method?.Name;
+
+            if (typeName.Length > 0 && typeName[0] == '<')
+            {
+                int end = typeName.IndexOf('>');
+                if (end > 1)
+                {
+                    methodName = typeName.Substring(1, end - 1);
+                    Type outer = declaringType.DeclaringType;
+                    typeName = outer != null ? outer.Name : typeName;
+                }
+            }
+
+            return $"{typeName}.{methodName}";
         }
 #else
         private static void ForwardToUnityConsole(MessageType type, string source, string content)
