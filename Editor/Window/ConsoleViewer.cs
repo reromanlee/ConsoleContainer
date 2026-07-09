@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using UnityEditor;
+using UnityEditorInternal;
 using UnityEngine;
 using UnityEngine.UIElements;
 
@@ -11,6 +12,8 @@ namespace reromanlee.ConsoleContainer.Editor
         private const string WindowName = "Console Viewer";
         private const string AllInstancesLabel = "All Instances";
         private const string EvenRowClass = "message-container-even";
+        private const string SelectedRowClass = "message-container-selected";
+        private const string CallstackButtonClass = "callstack-button";
 
         [SerializeField] private Texture2D windowIconDark;
         [SerializeField] private Texture2D windowIconLight;
@@ -22,10 +25,14 @@ namespace reromanlee.ConsoleContainer.Editor
 
         private DropdownField instanceDropdown;
         private VisualElement clearButton;
+        private VisualElement copyButton;
         private VisualElement contentContainer;
         private ScrollView contentScrollView;
         private Label selectedMessageLabel;
         private VisualElement callstackContainer;
+
+        private ConsoleMessage selectedMessage;
+        private VisualElement selectedRow;
 
         // Dropdown index 0 is always the chronological "All Instances" view; the
         // remaining indices map to currentInstances[selectedViewIndex - 1].
@@ -61,12 +68,14 @@ namespace reromanlee.ConsoleContainer.Editor
 
             instanceDropdown = root.Q<DropdownField>("instance-dropdown");
             clearButton = root.Q<VisualElement>("clear-button");
+            copyButton = root.Q<VisualElement>("copy-button");
             contentContainer = root.Q<VisualElement>("content-container");
             contentScrollView = contentContainer.GetFirstAncestorOfType<ScrollView>();
             selectedMessageLabel = root.Q<Label>("selected-message-label");
             callstackContainer = root.Q<VisualElement>("selected-message-callstack-container");
 
             clearButton.RegisterCallback<ClickEvent>(OnClearClicked);
+            copyButton.RegisterCallback<ClickEvent>(OnCopyClicked);
             instanceDropdown.RegisterValueChangedCallback(OnDropdownChanged);
 
             ResetDetails();
@@ -74,6 +83,7 @@ namespace reromanlee.ConsoleContainer.Editor
             ConsoleRegistry.Changed += OnRegistryChanged;
             EditorApplication.update += OnEditorUpdate;
 
+            lastClearGeneration = ConsoleRegistry.ClearGeneration;
             RebuildInstances();
             RebuildMessages();
         }
@@ -242,11 +252,64 @@ namespace reromanlee.ConsoleContainer.Editor
             VisualElement row = asset.Instantiate().Q<VisualElement>("message-container");
             row.Q<Label>("message-time").text = message.TimeText;
             row.Q<Label>("message-label").text = ToSingleLine(message.Label);
+            row.RegisterCallback<ClickEvent>(_ => Select(message, row));
             return row;
+        }
+
+        private void Select(ConsoleMessage message, VisualElement row)
+        {
+            if (selectedRow != null)
+            {
+                selectedRow.RemoveFromClassList(SelectedRowClass);
+            }
+
+            selectedMessage = message;
+            selectedRow = row;
+            row.AddToClassList(SelectedRowClass);
+
+            selectedMessageLabel.text = message.Label;
+            BuildCallstack(message);
+        }
+
+        private void BuildCallstack(ConsoleMessage message)
+        {
+            callstackContainer.Clear();
+
+            foreach (CallstackFrame frame in message.Callstack)
+            {
+                CallstackFrame captured = frame;
+                Button button = new Button(() => OpenFrame(captured))
+                {
+                    text = frame.Label,
+                    tooltip = frame.MethodName
+                };
+                button.AddToClassList(CallstackButtonClass);
+                callstackContainer.Add(button);
+            }
+        }
+
+        private static void OpenFrame(CallstackFrame frame)
+        {
+            if (string.IsNullOrEmpty(frame.FilePath))
+            {
+                return;
+            }
+
+            InternalEditorUtility.OpenFileAtLineExternal(frame.FilePath, frame.Line, 0);
+        }
+
+        private void OnCopyClicked(ClickEvent evt)
+        {
+            if (selectedMessage != null)
+            {
+                EditorGUIUtility.systemCopyBuffer = selectedMessage.Label;
+            }
         }
 
         private void ResetDetails()
         {
+            selectedMessage = null;
+            selectedRow = null;
             callstackContainer.Clear();
             selectedMessageLabel.text = string.Empty;
         }
