@@ -140,3 +140,16 @@
 .copy-button:hover {
     background-color: rgb(70, 70, 70);
 }
+
+.callstack-button {
+    margin-top: 3px;
+    margin-right: 3px;
+    margin-bottom: 0;
+    margin-left: 3px;
+    padding-top: 3px;
+    padding-right: 3px;
+    padding-bottom: 3px;
+    padding-left: 10px;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+}
