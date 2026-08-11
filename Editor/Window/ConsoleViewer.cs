@@ -51,6 +51,7 @@ namespace reromanlee.ConsoleContainer.Editor
         private int lastClearGeneration;
 
         private readonly List<ConsoleMessage> scratch = new List<ConsoleMessage>();
+        private readonly HashSet<string> usedInstanceLabels = new HashSet<string>();
         private volatile bool dirty;
         private bool suppressDropdownCallback;
 
@@ -146,11 +147,14 @@ namespace reromanlee.ConsoleContainer.Editor
             currentInstances = ConsoleRegistry.Snapshot();
             lastRegistryVersion = ConsoleRegistry.Version;
 
+            usedInstanceLabels.Clear();
+            usedInstanceLabels.Add(AllInstancesLabel);
+
             List<string> choices = new List<string>(currentInstances.Length + 1) { AllInstancesLabel };
             int restoredIndex = 0;
             for (int i = 0; i < currentInstances.Length; i++)
             {
-                choices.Add(DisplayName(currentInstances[i]));
+                choices.Add(BuildDisplayName(currentInstances[i]));
                 if (currentInstances[i] == previous)
                 {
                     restoredIndex = i + 1;
@@ -326,8 +330,27 @@ namespace reromanlee.ConsoleContainer.Editor
                 : normalized;
         }
 
-        private static string DisplayName(ConsoleInstance instance)
-            => instance.IsDisposed ? $"{instance.Name} (disposed)" : instance.Name;
+        /// <summary>
+        /// Builds the dropdown entry for an instance, keeping it unique within the
+        /// current list. Instance names are free-form and duplicates are common
+        /// (a system that recreates its instance, or two features picking the same
+        /// label), but a dropdown identifies its selection by text: without a
+        /// suffix, picking the second "Networking" would silently show the first.
+        /// </summary>
+        private string BuildDisplayName(ConsoleInstance instance)
+        {
+            string label = DecorateDisplayName(instance.Name, instance.IsDisposed);
+
+            for (int ordinal = 2; !usedInstanceLabels.Add(label); ordinal++)
+            {
+                label = DecorateDisplayName($"{instance.Name} ({ordinal})", instance.IsDisposed);
+            }
+
+            return label;
+        }
+
+        private static string DecorateDisplayName(string name, bool isDisposed)
+            => isDisposed ? $"{name} (disposed)" : name;
 
         private void BuildCallstack(ConsoleMessage message)
         {
