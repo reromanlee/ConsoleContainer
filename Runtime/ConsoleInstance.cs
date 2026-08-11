@@ -24,23 +24,27 @@ namespace reromanlee.ConsoleContainer
     /// </summary>
     public sealed class ConsoleInstance : IConsoleInstance, IDisposable
     {
+        // Above this many entries, a cleared instance releases its backing array
+        // instead of holding on to capacity it is unlikely to need again.
+        private const int ClearedCapacityTrimThreshold = 1024;
+
         private static int _instanceCounter;
 
         private readonly object _gate = new object();
         private readonly List<ConsoleMessage> _messages = new List<ConsoleMessage>();
 
-        private volatile bool _disposed;
+        private int _disposed;
 
         /// <summary>Display name shown in the viewer's instance dropdown.</summary>
         public string Name { get; }
 
         /// <summary>
         /// True once <see cref="Dispose"/> has been called. Disposed instances
-        /// ignore further logging but keep their messages so they remain
-        /// inspectable in the viewer (flagged "(disposed)") until the next
-        /// domain reload.
+        /// ignore further logging but keep any messages they already hold so they
+        /// remain inspectable in the viewer (flagged "(disposed)") until they are
+        /// cleared or the domain reloads.
         /// </summary>
-        public bool IsDisposed => _disposed;
+        public bool IsDisposed => Volatile.Read(ref _disposed) != 0;
 
         /// <summary>
         /// Raised for every message this instance creates, of any type.
@@ -119,46 +123,73 @@ namespace reromanlee.ConsoleContainer
         public void CreateError(string source, params string[] messageContent)
             => Create(MessageType.Error, ResolveSource(source), messageContent);
 
-        /// <summary>Removes every message from this instance.</summary>
+        /// <summary>
+        /// Removes every message from this instance. Clearing an already disposed
+        /// instance also drops it from the viewer, since nothing is left to
+        /// inspect and a stale entry would only crowd the dropdown.
+        /// </summary>
         public void Clear()
         {
             lock (_gate)
             {
                 _messages.Clear();
+
+                if (_messages.Capacity > ClearedCapacityTrimThreshold)
+                {
+                    _messages.Capacity = 0;
+                }
             }
 
 #if UNITY_EDITOR
-            ConsoleRegistry.NotifyCleared(this);
+            if (IsDisposed)
+            {
+                ConsoleRegistry.Unregister(this);
+            }
+            else
+            {
+                ConsoleRegistry.NotifyCleared(this);
+            }
 #endif
         }
 
         /// <summary>
         /// Marks the instance as disposed so it ignores further logging and drops
-        /// its event handlers. Its messages and its place in the viewer are
-        /// intentionally kept (and flagged "(disposed)") so they stay inspectable
-        /// after play mode ends; everything is released on the next domain reload.
+        /// its event handlers.
+        ///
+        /// An instance that still holds messages keeps its place in the viewer
+        /// (flagged "(disposed)") so its history stays inspectable after play mode
+        /// ends; one with nothing to show is removed outright, which keeps
+        /// repeated create/dispose cycles — test runs especially — from piling up
+        /// empty entries. Everything is released on the next domain reload.
         /// </summary>
         public void Dispose()
         {
-            if (_disposed)
+            // Exchange rather than a plain check so concurrent disposals cannot
+            // both run the teardown below.
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
             {
                 return;
             }
-
-            _disposed = true;
 
             // Handlers (and whatever they capture) must not outlive the instance.
             MessageCreated = null;
             ErrorCreated = null;
 
 #if UNITY_EDITOR
-            ConsoleRegistry.NotifyDisposed(this);
+            if (HasMessages())
+            {
+                ConsoleRegistry.NotifyDisposed(this);
+            }
+            else
+            {
+                ConsoleRegistry.Unregister(this);
+            }
 #endif
         }
 
         private void Create(MessageType type, string source, string[] messageContent)
         {
-            if (_disposed)
+            if (IsDisposed)
             {
                 return;
             }
@@ -256,6 +287,14 @@ namespace reromanlee.ConsoleContainer
 
                     buffer.Add(_messages[i]);
                 }
+            }
+        }
+
+        private bool HasMessages()
+        {
+            lock (_gate)
+            {
+                return _messages.Count > 0;
             }
         }
 

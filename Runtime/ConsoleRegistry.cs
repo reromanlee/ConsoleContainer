@@ -1,6 +1,7 @@
 #if UNITY_EDITOR
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace reromanlee.ConsoleContainer
 {
@@ -15,8 +16,8 @@ namespace reromanlee.ConsoleContainer
         private static readonly object Gate = new object();
         private static readonly List<ConsoleInstance> Instances = new List<ConsoleInstance>();
 
-        private static volatile int _version;
-        private static volatile int _clearGeneration;
+        private static int _version;
+        private static int _clearGeneration;
 
         /// <summary>
         /// Raised whenever instances or their messages change. May be invoked
@@ -26,10 +27,10 @@ namespace reromanlee.ConsoleContainer
         internal static event Action Changed;
 
         /// <summary>Bumped when the instance list, or an instance's display state (e.g. disposed), changes.</summary>
-        internal static int Version => _version;
+        internal static int Version => Volatile.Read(ref _version);
 
         /// <summary>Bumped when any instance is cleared (used to trigger a full rebuild).</summary>
-        internal static int ClearGeneration => _clearGeneration;
+        internal static int ClearGeneration => Volatile.Read(ref _clearGeneration);
 
         internal static ConsoleInstance[] Snapshot()
         {
@@ -49,9 +50,33 @@ namespace reromanlee.ConsoleContainer
                 }
 
                 Instances.Add(instance);
-                _version++;
             }
 
+            Interlocked.Increment(ref _version);
+            RaiseChanged();
+        }
+
+        /// <summary>
+        /// Drops an instance from the viewer entirely. Called once an instance
+        /// can no longer show anything useful — it is disposed and holds no
+        /// messages — so repeated create/dispose cycles (test runs, play mode)
+        /// cannot pile up stale entries that outlive their usefulness and hide
+        /// freshly created instances behind identically named ones.
+        /// </summary>
+        internal static void Unregister(ConsoleInstance instance)
+        {
+            bool removed;
+            lock (Gate)
+            {
+                removed = Instances.Remove(instance);
+            }
+
+            if (!removed)
+            {
+                return;
+            }
+
+            Interlocked.Increment(ref _version);
             RaiseChanged();
         }
 
@@ -63,18 +88,15 @@ namespace reromanlee.ConsoleContainer
         internal static void NotifyDisposed(ConsoleInstance instance)
         {
             // Bump the version so the viewer rebuilds its dropdown with the
-            // "(disposed)" label; the instance stays registered on purpose.
-            lock (Gate)
-            {
-                _version++;
-            }
-
+            // "(disposed)" label; an instance that still holds messages stays
+            // registered on purpose so its history remains inspectable.
+            Interlocked.Increment(ref _version);
             RaiseChanged();
         }
 
         internal static void NotifyCleared(ConsoleInstance instance)
         {
-            _clearGeneration++;
+            Interlocked.Increment(ref _clearGeneration);
             RaiseChanged();
         }
 
