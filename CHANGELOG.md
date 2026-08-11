@@ -5,6 +5,20 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-11
+
+### Added
+
+- **`ConsoleInstance.Created`** — a static event raised right after any instance
+  finishes constructing, so one subscriber can attach to every instance the
+  application will ever create, including the ones built later by nested scopes.
+  Previously a subscriber had to be wired up at each construction site, which
+  meant a console added later silently went unobserved — the failure mode that
+  matters most when that subscriber is a crash handler. Handlers see a fully
+  built instance, run on the constructing thread, and one that throws is reported
+  through `Debug.LogException` without disturbing the construction that triggered
+  it. Subscriptions are static and live as long as the domain does.
+
 ## [1.1.0] - 2026-08-11
 
 ### Added
@@ -90,6 +104,7 @@ Initial release.
 
 [1.0.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.0.0
 [1.1.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.1.0
+[1.2.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.2.0
 [#3]: https://github.com/reromanlee/ConsoleContainer/issues/3
 [#4]: https://github.com/reromanlee/ConsoleContainer/issues/4
 [#5]: https://github.com/reromanlee/ConsoleContainer/issues/5

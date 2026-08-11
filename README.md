@@ -26,7 +26,8 @@ like the built-in Unity Console.
   one opens the file at the exact line in your external editor.
 - **React to what you log.** Every instance raises `MessageCreated` and
   `ErrorCreated`, in the editor *and* in builds, so an error can trigger a soft
-  crash screen that shows the reason instead of just sitting in a log.
+  crash screen that shows the reason instead of just sitting in a log. A static
+  `Created` event covers every instance at once, including ones built later.
 - **Hide it in builds — or don't.** By default nothing reaches a player build.
   An optional settings asset lets you forward messages to `Debug.Log` in builds,
   with an independent toggle per message type.
@@ -182,6 +183,30 @@ console.MessageCreated += message => Telemetry.Record(message.Type, message.Labe
   `Debug.LogException` and the message is stored as usual.
 - **`Dispose()` drops every handler**, so a disposed instance can't keep the
   objects its handlers captured alive.
+
+### Covering every instance at once
+
+Subscribing per instance means remembering to do it at each construction site,
+and an app that builds consoles in more than one place — a bootstrap scope and a
+view scope, say — will eventually add a third and quietly leave it unobserved.
+`ConsoleInstance.Created` closes that gap: it is static, so one subscription
+reaches every instance the app will ever create, including ones constructed long
+afterwards.
+
+```csharp
+// Install once, before anything logs. Every console, present and future, is covered.
+ConsoleInstance.Created += instance => instance.ErrorCreated += SoftCrashScreen.Show;
+```
+
+- **The instance is fully built** by the time handlers run, so subscribing to its
+  own events from here is safe.
+- **It is raised on the constructing thread**, and a handler that throws is
+  reported through `Debug.LogException` without breaking the construction.
+- **Subscriptions are static and live as long as the domain does.** A static
+  subscriber needs no unsubscribe; one that is not must detach, or it keeps its
+  target alive. Where the editor is set to enter play mode without a domain
+  reload, unsubscribe before subscribing so a surviving handler is not left
+  registered twice.
 
 The `ConsoleMessage` handed to a handler carries `Type`, `Timestamp`, `Source`,
 `Content`, `Label` (`"{source}: {content}"`) and — in the editor — `Callstack`.

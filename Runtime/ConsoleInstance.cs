@@ -18,7 +18,9 @@ namespace reromanlee.ConsoleContainer
     /// <see cref="ConsoleContainerSettings"/> (and hidden entirely when no
     /// settings asset is present). Either way, <see cref="MessageCreated"/> and
     /// <see cref="ErrorCreated"/> let application code react to messages —
-    /// turning a logged error into a soft crash screen, for example.
+    /// turning a logged error into a soft crash screen, for example — and the
+    /// static <see cref="Created"/> event reaches every instance at once, so a
+    /// single subscriber can cover instances it never constructed.
     ///
     /// Every <c>Create*</c> method is safe to call concurrently from any thread.
     /// </summary>
@@ -45,6 +47,28 @@ namespace reromanlee.ConsoleContainer
         /// cleared or the domain reloads.
         /// </summary>
         public bool IsDisposed => Volatile.Read(ref _disposed) != 0;
+
+        /// <summary>
+        /// Raised right after any instance finishes constructing, on the thread that constructed
+        /// it. Lets one subscriber attach to every instance the application will ever create —
+        /// including the ones built later by nested scopes — instead of each construction site
+        /// having to remember to wire that subscriber up itself.
+        ///
+        /// The instance is fully built when this runs, so subscribing to
+        /// <see cref="ErrorCreated"/> or <see cref="MessageCreated"/> from a handler is safe. A
+        /// handler that throws is reported through <see cref="Debug.LogException(Exception)"/>
+        /// without breaking the construction that triggered it.
+        ///
+        /// Subscriptions are static and live as long as the domain does: a static subscriber needs
+        /// no unsubscribe, while one that is not static must detach or it keeps its target alive.
+        ///
+        /// <example>
+        /// <code>
+        /// ConsoleInstance.Created += instance => instance.ErrorCreated += SoftCrash.Show;
+        /// </code>
+        /// </example>
+        /// </summary>
+        public static event Action<IConsoleInstance> Created;
 
         /// <summary>
         /// Raised for every message this instance creates, of any type.
@@ -103,6 +127,9 @@ namespace reromanlee.ConsoleContainer
 #if UNITY_EDITOR
             ConsoleRegistry.Register(this);
 #endif
+
+            // Raised last, so no subscriber can observe a half-built instance.
+            RaiseCreated(this);
         }
 
         public void CreateText(object source, params string[] messageContent)
@@ -236,6 +263,28 @@ namespace reromanlee.ConsoleContainer
             if (type == MessageType.Error)
             {
                 Invoke(ErrorCreated, message);
+            }
+        }
+
+        // Mirrors Invoke below: the handler is copied out of the static event first, so a
+        // concurrent unsubscribe cannot turn the invocation into a null call.
+        private static void RaiseCreated(IConsoleInstance instance)
+        {
+            Action<IConsoleInstance> handler = Created;
+
+            if (handler == null)
+            {
+                return;
+            }
+
+            try
+            {
+                handler(instance);
+            }
+            catch (Exception exception)
+            {
+                // A faulty subscriber must never break the construction that triggered it.
+                Debug.LogException(exception);
             }
         }
 
