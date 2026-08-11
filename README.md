@@ -24,6 +24,9 @@ like the built-in Unity Console.
   ordering between systems.
 - **Jump to code.** Selecting a message lists its call stack as buttons; each
   one opens the file at the exact line in your external editor.
+- **React to what you log.** Every instance raises `MessageCreated` and
+  `ErrorCreated`, in the editor *and* in builds, so an error can trigger a soft
+  crash screen that shows the reason instead of just sitting in a log.
 - **Hide it in builds — or don't.** By default nothing reaches a player build.
   An optional settings asset lets you forward messages to `Debug.Log` in builds,
   with an independent toggle per message type.
@@ -124,28 +127,84 @@ produces:
 new ConsoleInstance();              // auto-named "Instance N"
 new ConsoleInstance("My Context");  // named for the dropdown
 
-instance.Name;    // the display name
-instance.Clear(); // remove this instance's messages
-instance.Dispose();// clear and detach from the viewer
+instance.Name;       // the display name
+instance.IsDisposed; // true once Dispose has been called
+instance.Clear();    // remove this instance's messages
+instance.Dispose();  // stop logging and drop event handlers
 ```
+
+Two instances may share a name — the viewer disambiguates them — so a system is
+free to name its instance after itself without coordinating with anything else.
+
+### Dependency injection
+
+`ConsoleInstance` has a parameterless constructor next to the named one, so
+containers that construct by convention (VContainer, Zenject, Reflex, …) can
+resolve `IConsoleInstance` without being taught how to supply a name:
+
+```csharp
+builder.Register<IConsoleInstance, ConsoleInstance>(Lifetime.Singleton);
+```
+
+Register a named instance with the container's own factory/instance API when you
+want it to show up under a specific name:
+
+```csharp
+builder.RegisterInstance<IConsoleInstance>(new ConsoleInstance("Networking"));
+```
+
+## Reacting to messages
+
+Every instance raises events as messages are created, so application code can act
+on what its systems log. The common case is turning an error into a soft crash
+that tells the player (or the QA build) what actually went wrong:
+
+```csharp
+IConsoleInstance console = new ConsoleInstance("Networking");
+
+// Errors only.
+console.ErrorCreated += message => SoftCrashScreen.Show(message.Label);
+
+// Everything, when you want to filter or forward it yourself.
+console.MessageCreated += message => Telemetry.Record(message.Type, message.Label);
+```
+
+| Event | Raised for |
+| --- | --- |
+| `MessageCreated` | Every message, of any type. |
+| `ErrorCreated` | `Error` messages only, immediately after `MessageCreated`. |
+
+- **They fire in player builds too**, independent of the settings asset — a
+  message that never reaches the Unity log still reaches your handlers.
+- **They fire on the thread that logged the message.** If you log from a job or
+  background thread, marshal to the main thread before touching the Unity API.
+- **A throwing handler cannot break logging.** The exception is reported through
+  `Debug.LogException` and the message is stored as usual.
+- **`Dispose()` drops every handler**, so a disposed instance can't keep the
+  objects its handlers captured alive.
+
+The `ConsoleMessage` handed to a handler carries `Type`, `Timestamp`, `Source`,
+`Content`, `Label` (`"{source}: {content}"`) and — in the editor — `Callstack`.
 
 ## The Console Viewer window
 
 | Feature | Behaviour |
 | --- | --- |
-| **Instance dropdown** | Pick a single instance, or **All Instances** to see every message merged in chronological order. |
+| **Instance dropdown** | Pick a single instance, or **All Instances** to see every message merged in chronological order. Instances that share a name are numbered (`Networking`, `Networking (2)`) so each stays selectable, and one that ended its life is marked `(disposed)`. |
+| **Remembered layout** | Each window keeps its own splitter sizes, selected instance and scroll position across domain reloads and editor restarts. If the instance you were watching is recreated — a new play session, another test run — the view re-attaches to it by name. |
 | **Zebra striping** | Alternating rows are subtly highlighted for readability; selection and hover always take priority. |
 | **Selection** | Click a message to show its full `{source}: {content}` text in the details pane. |
 | **Copy** | Copies the selected message to the system clipboard. |
 | **Call stack** | Each frame becomes a button — top button is the log call site, going down the chain — that opens the file at its line in your IDE. |
-| **Clear** | Clears the currently selected instance, or **all** of them when *All Instances* is selected. |
+| **Clear** | Clears the currently selected instance, or **all** of them when *All Instances* is selected. A `(disposed)` instance leaves the dropdown at that point, since it has nothing left to show. |
 
 ## Editor vs. player builds
 
-**In the Unity Editor**, messages go **only** to the Console Viewer window. They
-never touch the Unity Console — no `Debug.Log`, no doubled-up output — as long as
-you log through a `ConsoleInstance` (calling `Debug.Log` or throwing exceptions
-yourself still behaves normally).
+**In the Unity Editor**, messages go to the Console Viewer window. They stay out
+of the Unity Console — no `Debug.Log`, no doubled-up output — as long as you log
+through a `ConsoleInstance` (calling `Debug.Log` or throwing exceptions yourself
+still behaves normally). The one exception is test runs, covered
+[below](#showing-messages-in-the-test-runner).
 
 **In a player build**, there is no viewer, so messages are optionally forwarded
 to Unity's log based on an optional settings asset:
@@ -165,10 +224,38 @@ If **no** settings asset exists in the build, all ConsoleContainer messages stay
 hidden. This lets you keep verbose instrumentation in your code and decide, per
 project, exactly what (if anything) surfaces in shipped logs.
 
+### Showing messages in the Test Runner
+
+The Test Runner window only lists entries that pass through Unity's log handler,
+so messages kept inside the Console Viewer would be invisible while tests run.
+The same settings asset therefore has an **Editor logging** section:
+
+| Setting | Meaning |
+| --- | --- |
+| **Editor forwarding** | `Never`, `During Test Runs` *(default)* or `Always` — when editor messages are mirrored into the Unity console. |
+| **Log … in editor** | The same per-type toggles as builds, applied while forwarding is active. |
+
+With the default, messages appear in the Test Runner for the length of a run —
+and, since it is the same log stream, in the Unity Console for that stretch too —
+while the console stays clean the rest of the time. No settings asset is needed
+for this; the defaults above apply on their own, so create one only to change
+them.
+
+> **Errors fail tests.** A forwarded `CreateError` becomes `Debug.LogError`, and
+> Unity fails a test on an unexpected error unless it is declared with
+> `LogAssert.Expect`. That mirrors what `Debug`-based code already does; turn
+> **Log Errors In Editor** off if you would rather see errors without failing on
+> them.
+
+Test-run detection uses the Unity Test Framework package. Without it installed,
+the bridge assembly is skipped and forwarding simply never activates.
+
 ## Performance
 
 - **Editor-only cost.** Message storage and call-stack capture happen only under
   `UNITY_EDITOR`; player builds do nothing beyond the optional `Debug` forward.
+  A build allocates a `ConsoleMessage` only when something is actually
+  subscribed to `MessageCreated` or `ErrorCreated`.
 - **Incremental rendering.** The viewer appends only *new* rows each editor
   frame using a globally monotonic sequence number — it does not rebuild the
   whole list on every message. A full rebuild happens only when instances change
