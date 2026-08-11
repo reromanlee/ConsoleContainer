@@ -13,8 +13,8 @@ namespace reromanlee.ConsoleContainer
     /// A thread-safe container of log messages.
     ///
     /// In the Unity Editor, messages are stored and surfaced through the Console
-    /// Viewer window only — they never reach the Unity Console. In a player
-    /// build, messages are forwarded to <see cref="Debug"/> according to
+    /// Viewer window. In a player build there is no viewer, so they are only
+    /// forwarded to <see cref="Debug"/> according to
     /// <see cref="ConsoleContainerSettings"/> (and hidden entirely when no
     /// settings asset is present). Either way, <see cref="MessageCreated"/> and
     /// <see cref="ErrorCreated"/> let application code react to messages —
@@ -208,9 +208,17 @@ namespace reromanlee.ConsoleContainer
 
             ConsoleRegistry.NotifyMessageAdded(this);
 
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, source, content);
+            }
+
             RaiseCreated(type, message);
 #else
-            ForwardToUnityConsole(type, source, content);
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, source, content);
+            }
 
             // Player builds keep no history, so the entry is only worth
             // allocating when something is actually listening for it.
@@ -251,6 +259,24 @@ namespace reromanlee.ConsoleContainer
                 // instead, the way an unhandled event handler is normally
                 // surfaced.
                 Debug.LogException(exception);
+            }
+        }
+
+        private static void ForwardToUnityConsole(MessageType type, string source, string content)
+        {
+            string formatted = $"{source}: {content}";
+
+            switch (type)
+            {
+                case MessageType.Text:
+                    Debug.Log(formatted);
+                    break;
+                case MessageType.Warning:
+                    Debug.LogWarning(formatted);
+                    break;
+                case MessageType.Error:
+                    Debug.LogError(formatted);
+                    break;
             }
         }
 
@@ -360,30 +386,6 @@ namespace reromanlee.ConsoleContainer
             return $"{typeName}.{methodName}";
         }
 #else
-        private static void ForwardToUnityConsole(MessageType type, string source, string content)
-        {
-            ConsoleContainerSettings settings = ConsoleContainerSettings.Active;
-            if (settings == null)
-            {
-                // No settings asset in the build => messages stay hidden.
-                return;
-            }
-
-            string formatted = $"{source}: {content}";
-            switch (type)
-            {
-                case MessageType.Text:
-                    if (settings.LogTextInBuild) Debug.Log(formatted);
-                    break;
-                case MessageType.Warning:
-                    if (settings.LogWarningsInBuild) Debug.LogWarning(formatted);
-                    break;
-                case MessageType.Error:
-                    if (settings.LogErrorsInBuild) Debug.LogError(formatted);
-                    break;
-            }
-        }
-
         // Cheap pre-check that keeps a build from allocating a ConsoleMessage
         // nobody would receive.
         private bool HasListener(MessageType type)

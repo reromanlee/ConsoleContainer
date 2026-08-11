@@ -1,0 +1,28 @@
+{
+    "name": "reromanlee.ConsoleContainer.TestRunnerBridge",
+    "rootNamespace": "reromanlee.ConsoleContainer.Editor",
+    "references": [
+        "reromanlee.ConsoleContainer",
+        "UnityEditor.TestRunner",
+        "UnityEngine.TestRunner"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": false,
+    "defineConstraints": [
+        "CONSOLE_CONTAINER_TEST_FRAMEWORK"
+    ],
+    "versionDefines": [
+        {
+            "name": "com.unity.test-framework",
+            "expression": "",
+            "define": "CONSOLE_CONTAINER_TEST_FRAMEWORK"
+        }
+    ],
+    "noEngineReferences": false
+}
