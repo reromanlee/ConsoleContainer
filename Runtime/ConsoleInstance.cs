@@ -75,13 +75,22 @@ namespace reromanlee.ConsoleContainer
         public event Action<ConsoleMessage> ErrorCreated;
 
         /// <summary>
+        /// Creates a console instance with a generated "Instance N" name.
+        /// Exists so dependency-injection containers, which cannot supply the
+        /// optional name, can construct the type by convention.
+        /// </summary>
+        public ConsoleInstance() : this(null)
+        {
+        }
+
+        /// <summary>
         /// Creates a new console instance.
         /// </summary>
         /// <param name="name">
-        /// Optional display name for the viewer dropdown. When omitted, a unique
+        /// Display name for the viewer dropdown. When null or empty, a unique
         /// "Instance N" name is generated.
         /// </param>
-        public ConsoleInstance(string name = null)
+        public ConsoleInstance(string name)
         {
             Name = string.IsNullOrEmpty(name)
                 ? $"Instance {Interlocked.Increment(ref _instanceCounter)}"
