@@ -5,6 +5,48 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-08-11
+
+### Added
+
+- **Message events** — `IConsoleInstance` now raises `MessageCreated` for every
+  message and `ErrorCreated` for errors, so application code can react to what it
+  logs (raising a soft crash screen with the error as its reason, for example).
+  Both fire in player builds as well as the editor, on the thread that logged the
+  message; a handler that throws is reported through `Debug.LogException` without
+  disturbing the logging call, and `Dispose` drops every handler. In a build the
+  `ConsoleMessage` is only allocated when something is subscribed.
+- **Parameterless `ConsoleInstance` constructor** — dependency-injection
+  containers can resolve `IConsoleInstance` by convention instead of failing to
+  supply the optional name ([#3]).
+- **Editor logging settings** — `ConsoleContainerSettings` gained an *Editor
+  logging* section: a forwarding mode (`Never`, `During Test Runs`, `Always`) and
+  per-type toggles. Defaulting to *During Test Runs* makes messages show up in the
+  Test Runner window for the length of a run while leaving the Unity Console clean
+  the rest of the time, and it works without a settings asset ([#5]). Test-run
+  detection lives in a separate assembly gated on the Unity Test Framework, so
+  projects without that package are unaffected.
+- **Per-window view state** — each Console Viewer window remembers its splitter
+  sizes, selected instance and scroll position across domain reloads and editor
+  restarts, and re-attaches to a recreated instance by name ([#7]).
+
+### Fixed
+
+- Instances that share a name no longer collapse into a single dropdown entry
+  where picking one silently showed another; duplicates are numbered
+  (`Networking`, `Networking (2)`) ([#4]).
+- Disposed instances no longer linger in the dropdown once they have nothing to
+  show. An instance is dropped when it is disposed while empty, or cleared after
+  being disposed, so repeated test runs without a domain reload stop stacking
+  stale entries in front of freshly created ones ([#6]).
+- The registry's version counters are now incremented atomically; concurrent
+  logging could previously lose an update and leave the viewer out of date.
+- Loading the settings asset no longer risks touching the main-thread-only
+  `Resources` API from a background thread, and edits to the asset take effect
+  without waiting for a domain reload.
+- The window title, icon and minimum size are re-applied whenever the window is
+  enabled, so a viewer restored from a saved layout keeps them.
+
 ## [1.0.0] - 2026-07-09
 
 Initial release.
@@ -47,3 +89,9 @@ Initial release.
   several named instances continuously, including from a background thread.
 
 [1.0.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.0.0
+[1.1.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.1.0
+[#3]: https://github.com/reromanlee/ConsoleContainer/issues/3
+[#4]: https://github.com/reromanlee/ConsoleContainer/issues/4
+[#5]: https://github.com/reromanlee/ConsoleContainer/issues/5
+[#6]: https://github.com/reromanlee/ConsoleContainer/issues/6
+[#7]: https://github.com/reromanlee/ConsoleContainer/issues/7

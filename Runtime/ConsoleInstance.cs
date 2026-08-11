@@ -13,41 +13,88 @@ namespace reromanlee.ConsoleContainer
     /// A thread-safe container of log messages.
     ///
     /// In the Unity Editor, messages are stored and surfaced through the Console
-    /// Viewer window only — they never reach the Unity Console. In a player
-    /// build, messages are forwarded to <see cref="Debug"/> according to
+    /// Viewer window. In a player build there is no viewer, so they are only
+    /// forwarded to <see cref="Debug"/> according to
     /// <see cref="ConsoleContainerSettings"/> (and hidden entirely when no
-    /// settings asset is present).
+    /// settings asset is present). Either way, <see cref="MessageCreated"/> and
+    /// <see cref="ErrorCreated"/> let application code react to messages —
+    /// turning a logged error into a soft crash screen, for example.
     ///
     /// Every <c>Create*</c> method is safe to call concurrently from any thread.
     /// </summary>
     public sealed class ConsoleInstance : IConsoleInstance, IDisposable
     {
+        // Above this many entries, a cleared instance releases its backing array
+        // instead of holding on to capacity it is unlikely to need again.
+        private const int ClearedCapacityTrimThreshold = 1024;
+
         private static int _instanceCounter;
 
         private readonly object _gate = new object();
         private readonly List<ConsoleMessage> _messages = new List<ConsoleMessage>();
 
-        private volatile bool _disposed;
+        private int _disposed;
 
         /// <summary>Display name shown in the viewer's instance dropdown.</summary>
         public string Name { get; }
 
         /// <summary>
         /// True once <see cref="Dispose"/> has been called. Disposed instances
-        /// ignore further logging but keep their messages so they remain
-        /// inspectable in the viewer (flagged "(disposed)") until the next
-        /// domain reload.
+        /// ignore further logging but keep any messages they already hold so they
+        /// remain inspectable in the viewer (flagged "(disposed)") until they are
+        /// cleared or the domain reloads.
         /// </summary>
-        public bool IsDisposed => _disposed;
+        public bool IsDisposed => Volatile.Read(ref _disposed) != 0;
+
+        /// <summary>
+        /// Raised for every message this instance creates, of any type.
+        ///
+        /// Raised on the thread that logged the message — which may be a
+        /// background thread — so a handler that touches the Unity API or UI must
+        /// marshal to the main thread itself. Handlers run in both the editor and
+        /// player builds, and an exception thrown by one is reported through
+        /// <see cref="Debug.LogException(Exception)"/> without interrupting the
+        /// logging call. All handlers are dropped on <see cref="Dispose"/>.
+        ///
+        /// <example>
+        /// <code>
+        /// console.MessageCreated += message => Telemetry.Record(message.Label);
+        /// </code>
+        /// </example>
+        /// </summary>
+        public event Action<ConsoleMessage> MessageCreated;
+
+        /// <summary>
+        /// Raised only for <see cref="MessageType.Error"/> messages, right after
+        /// <see cref="MessageCreated"/>. Convenience for the common case of
+        /// reacting to failures without filtering by type; the same threading and
+        /// exception rules as <see cref="MessageCreated"/> apply.
+        ///
+        /// <example>
+        /// <code>
+        /// console.ErrorCreated += message => SoftCrash.Show(message.Label);
+        /// </code>
+        /// </example>
+        /// </summary>
+        public event Action<ConsoleMessage> ErrorCreated;
+
+        /// <summary>
+        /// Creates a console instance with a generated "Instance N" name.
+        /// Exists so dependency-injection containers, which cannot supply the
+        /// optional name, can construct the type by convention.
+        /// </summary>
+        public ConsoleInstance() : this(null)
+        {
+        }
 
         /// <summary>
         /// Creates a new console instance.
         /// </summary>
         /// <param name="name">
-        /// Optional display name for the viewer dropdown. When omitted, a unique
+        /// Display name for the viewer dropdown. When null or empty, a unique
         /// "Instance N" name is generated.
         /// </param>
-        public ConsoleInstance(string name = null)
+        public ConsoleInstance(string name)
         {
             Name = string.IsNullOrEmpty(name)
                 ? $"Instance {Interlocked.Increment(ref _instanceCounter)}"
@@ -76,42 +123,73 @@ namespace reromanlee.ConsoleContainer
         public void CreateError(string source, params string[] messageContent)
             => Create(MessageType.Error, ResolveSource(source), messageContent);
 
-        /// <summary>Removes every message from this instance.</summary>
+        /// <summary>
+        /// Removes every message from this instance. Clearing an already disposed
+        /// instance also drops it from the viewer, since nothing is left to
+        /// inspect and a stale entry would only crowd the dropdown.
+        /// </summary>
         public void Clear()
         {
             lock (_gate)
             {
                 _messages.Clear();
+
+                if (_messages.Capacity > ClearedCapacityTrimThreshold)
+                {
+                    _messages.Capacity = 0;
+                }
             }
 
 #if UNITY_EDITOR
-            ConsoleRegistry.NotifyCleared(this);
+            if (IsDisposed)
+            {
+                ConsoleRegistry.Unregister(this);
+            }
+            else
+            {
+                ConsoleRegistry.NotifyCleared(this);
+            }
 #endif
         }
 
         /// <summary>
-        /// Marks the instance as disposed so it ignores further logging. Its
-        /// messages and its place in the viewer are intentionally kept (and
-        /// flagged "(disposed)") so they stay inspectable after play mode ends;
-        /// everything is released on the next domain reload.
+        /// Marks the instance as disposed so it ignores further logging and drops
+        /// its event handlers.
+        ///
+        /// An instance that still holds messages keeps its place in the viewer
+        /// (flagged "(disposed)") so its history stays inspectable after play mode
+        /// ends; one with nothing to show is removed outright, which keeps
+        /// repeated create/dispose cycles — test runs especially — from piling up
+        /// empty entries. Everything is released on the next domain reload.
         /// </summary>
         public void Dispose()
         {
-            if (_disposed)
+            // Exchange rather than a plain check so concurrent disposals cannot
+            // both run the teardown below.
+            if (Interlocked.Exchange(ref _disposed, 1) != 0)
             {
                 return;
             }
 
-            _disposed = true;
+            // Handlers (and whatever they capture) must not outlive the instance.
+            MessageCreated = null;
+            ErrorCreated = null;
 
 #if UNITY_EDITOR
-            ConsoleRegistry.NotifyDisposed(this);
+            if (HasMessages())
+            {
+                ConsoleRegistry.NotifyDisposed(this);
+            }
+            else
+            {
+                ConsoleRegistry.Unregister(this);
+            }
 #endif
         }
 
         private void Create(MessageType type, string source, string[] messageContent)
         {
-            if (_disposed)
+            if (IsDisposed)
             {
                 return;
             }
@@ -119,6 +197,8 @@ namespace reromanlee.ConsoleContainer
             string content = BuildContent(messageContent);
 
 #if UNITY_EDITOR
+            // The editor keeps every message for the viewer, so the entry is
+            // always built.
             ConsoleMessage message = new ConsoleMessage(type, source, content, CaptureCallstack());
 
             lock (_gate)
@@ -127,9 +207,77 @@ namespace reromanlee.ConsoleContainer
             }
 
             ConsoleRegistry.NotifyMessageAdded(this);
+
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, source, content);
+            }
+
+            RaiseCreated(type, message);
 #else
-            ForwardToUnityConsole(type, source, content);
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, source, content);
+            }
+
+            // Player builds keep no history, so the entry is only worth
+            // allocating when something is actually listening for it.
+            if (HasListener(type))
+            {
+                RaiseCreated(type, new ConsoleMessage(type, source, content, null));
+            }
 #endif
+        }
+
+        private void RaiseCreated(MessageType type, ConsoleMessage message)
+        {
+            Invoke(MessageCreated, message);
+
+            if (type == MessageType.Error)
+            {
+                Invoke(ErrorCreated, message);
+            }
+        }
+
+        // The handler is copied into a parameter before it is called, so a
+        // concurrent unsubscribe cannot turn the invocation into a null call.
+        private static void Invoke(Action<ConsoleMessage> handler, ConsoleMessage message)
+        {
+            if (handler == null)
+            {
+                return;
+            }
+
+            try
+            {
+                handler(message);
+            }
+            catch (Exception exception)
+            {
+                // A faulty subscriber must never break the logging call that
+                // triggered it. Report it through Unity's exception channel
+                // instead, the way an unhandled event handler is normally
+                // surfaced.
+                Debug.LogException(exception);
+            }
+        }
+
+        private static void ForwardToUnityConsole(MessageType type, string source, string content)
+        {
+            string formatted = $"{source}: {content}";
+
+            switch (type)
+            {
+                case MessageType.Text:
+                    Debug.Log(formatted);
+                    break;
+                case MessageType.Warning:
+                    Debug.LogWarning(formatted);
+                    break;
+                case MessageType.Error:
+                    Debug.LogError(formatted);
+                    break;
+            }
         }
 
         private static string ResolveSource(object source)
@@ -165,6 +313,14 @@ namespace reromanlee.ConsoleContainer
 
                     buffer.Add(_messages[i]);
                 }
+            }
+        }
+
+        private bool HasMessages()
+        {
+            lock (_gate)
+            {
+                return _messages.Count > 0;
             }
         }
 
@@ -230,29 +386,10 @@ namespace reromanlee.ConsoleContainer
             return $"{typeName}.{methodName}";
         }
 #else
-        private static void ForwardToUnityConsole(MessageType type, string source, string content)
-        {
-            ConsoleContainerSettings settings = ConsoleContainerSettings.Active;
-            if (settings == null)
-            {
-                // No settings asset in the build => messages stay hidden.
-                return;
-            }
-
-            string formatted = $"{source}: {content}";
-            switch (type)
-            {
-                case MessageType.Text:
-                    if (settings.LogTextInBuild) Debug.Log(formatted);
-                    break;
-                case MessageType.Warning:
-                    if (settings.LogWarningsInBuild) Debug.LogWarning(formatted);
-                    break;
-                case MessageType.Error:
-                    if (settings.LogErrorsInBuild) Debug.LogError(formatted);
-                    break;
-            }
-        }
+        // Cheap pre-check that keeps a build from allocating a ConsoleMessage
+        // nobody would receive.
+        private bool HasListener(MessageType type)
+            => MessageCreated != null || (type == MessageType.Error && ErrorCreated != null);
 #endif
     }
 }

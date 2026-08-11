@@ -1,6 +1,6 @@
 {
   "name": "com.reromanlee.consolecontainer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "displayName": "ConsoleContainer",
   "description": "Per-context logging containers that keep debug output out of the Unity Console. Create named console instances, view them in a dedicated editor window with chronological merging and IDE call-stack navigation, and optionally forward messages to Debug logs in player builds.",
   "unity": "6000.0",
