@@ -11,9 +11,11 @@ namespace reromanlee.ConsoleContainer.Samples
     /// traffic.
     ///
     /// Drop it on any GameObject and press Play, then open the viewer and switch
-    /// the instance dropdown between "Networking", "AI", "Worker (bg thread)" and
-    /// "All Instances". The worker instance logs from a background thread to
-    /// demonstrate that logging is safe from any context.
+    /// the instance dropdown between "Networking", "AI", "Worker (bg thread)",
+    /// "Crash Reporter" and "All Instances". The worker instance logs from a
+    /// background thread to demonstrate that logging is safe from any context,
+    /// and the crash reporter shows how outside code reacts to logged errors
+    /// through <see cref="IConsoleInstance.ErrorCreated"/>.
     /// </summary>
     [AddComponentMenu("ConsoleContainer/Console Container Demo")]
     public sealed class ConsoleContainerDemo : MonoBehaviour
@@ -21,6 +23,7 @@ namespace reromanlee.ConsoleContainer.Samples
         private ConsoleInstance networking;
         private ConsoleInstance ai;
         private ConsoleInstance worker;
+        private ConsoleInstance crashReporter;
 
         private Thread workerThread;
         private CancellationTokenSource workerCancellation;
@@ -38,6 +41,11 @@ namespace reromanlee.ConsoleContainer.Samples
             networking = new ConsoleInstance("Networking");
             ai = new ConsoleInstance("AI");
             worker = new ConsoleInstance("Worker (bg thread)");
+            crashReporter = new ConsoleInstance("Crash Reporter");
+
+            // Watch one instance from the outside: this is where a real project
+            // would raise a soft crash screen showing the error as the reason.
+            networking.ErrorCreated += OnNetworkingError;
 
             StartCoroutine(SimulateNetworking());
             StartCoroutine(SimulateAI());
@@ -59,6 +67,14 @@ namespace reromanlee.ConsoleContainer.Samples
         {
             StopAllCoroutines();
 
+            // Dispose drops handlers as well, but unsubscribing explicitly keeps
+            // the lifetime obvious and works for instances that outlive this
+            // component.
+            if (networking != null)
+            {
+                networking.ErrorCreated -= OnNetworkingError;
+            }
+
             workerCancellation?.Cancel();
             if (workerThread != null && workerThread.IsAlive)
             {
@@ -69,10 +85,24 @@ namespace reromanlee.ConsoleContainer.Samples
             workerCancellation = null;
             workerThread = null;
 
-            // Dispose clears each instance and detaches it from the viewer.
+            // Dispose stops further logging and detaches each instance from the
+            // viewer once it has nothing left to show.
             networking?.Dispose();
             ai?.Dispose();
             worker?.Dispose();
+            crashReporter?.Dispose();
+        }
+
+        /// <summary>
+        /// Runs whenever the networking instance logs an error. The handler is
+        /// invoked on the thread that logged the message — here a coroutine, so
+        /// the main thread — which is why it can touch other Unity objects
+        /// directly. A handler attached to the background worker would have to
+        /// marshal back to the main thread first.
+        /// </summary>
+        private void OnNetworkingError(ConsoleMessage message)
+        {
+            crashReporter.CreateWarning(this, "Soft crash would trigger:", message.Label);
         }
 
         private IEnumerator SimulateNetworking()

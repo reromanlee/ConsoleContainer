@@ -16,7 +16,9 @@ namespace reromanlee.ConsoleContainer
     /// Viewer window only — they never reach the Unity Console. In a player
     /// build, messages are forwarded to <see cref="Debug"/> according to
     /// <see cref="ConsoleContainerSettings"/> (and hidden entirely when no
-    /// settings asset is present).
+    /// settings asset is present). Either way, <see cref="MessageCreated"/> and
+    /// <see cref="ErrorCreated"/> let application code react to messages —
+    /// turning a logged error into a soft crash screen, for example.
     ///
     /// Every <c>Create*</c> method is safe to call concurrently from any thread.
     /// </summary>
@@ -39,6 +41,38 @@ namespace reromanlee.ConsoleContainer
         /// domain reload.
         /// </summary>
         public bool IsDisposed => _disposed;
+
+        /// <summary>
+        /// Raised for every message this instance creates, of any type.
+        ///
+        /// Raised on the thread that logged the message — which may be a
+        /// background thread — so a handler that touches the Unity API or UI must
+        /// marshal to the main thread itself. Handlers run in both the editor and
+        /// player builds, and an exception thrown by one is reported through
+        /// <see cref="Debug.LogException(Exception)"/> without interrupting the
+        /// logging call. All handlers are dropped on <see cref="Dispose"/>.
+        ///
+        /// <example>
+        /// <code>
+        /// console.MessageCreated += message => Telemetry.Record(message.Label);
+        /// </code>
+        /// </example>
+        /// </summary>
+        public event Action<ConsoleMessage> MessageCreated;
+
+        /// <summary>
+        /// Raised only for <see cref="MessageType.Error"/> messages, right after
+        /// <see cref="MessageCreated"/>. Convenience for the common case of
+        /// reacting to failures without filtering by type; the same threading and
+        /// exception rules as <see cref="MessageCreated"/> apply.
+        ///
+        /// <example>
+        /// <code>
+        /// console.ErrorCreated += message => SoftCrash.Show(message.Label);
+        /// </code>
+        /// </example>
+        /// </summary>
+        public event Action<ConsoleMessage> ErrorCreated;
 
         /// <summary>
         /// Creates a new console instance.
@@ -90,10 +124,10 @@ namespace reromanlee.ConsoleContainer
         }
 
         /// <summary>
-        /// Marks the instance as disposed so it ignores further logging. Its
-        /// messages and its place in the viewer are intentionally kept (and
-        /// flagged "(disposed)") so they stay inspectable after play mode ends;
-        /// everything is released on the next domain reload.
+        /// Marks the instance as disposed so it ignores further logging and drops
+        /// its event handlers. Its messages and its place in the viewer are
+        /// intentionally kept (and flagged "(disposed)") so they stay inspectable
+        /// after play mode ends; everything is released on the next domain reload.
         /// </summary>
         public void Dispose()
         {
@@ -103,6 +137,10 @@ namespace reromanlee.ConsoleContainer
             }
 
             _disposed = true;
+
+            // Handlers (and whatever they capture) must not outlive the instance.
+            MessageCreated = null;
+            ErrorCreated = null;
 
 #if UNITY_EDITOR
             ConsoleRegistry.NotifyDisposed(this);
@@ -119,6 +157,8 @@ namespace reromanlee.ConsoleContainer
             string content = BuildContent(messageContent);
 
 #if UNITY_EDITOR
+            // The editor keeps every message for the viewer, so the entry is
+            // always built.
             ConsoleMessage message = new ConsoleMessage(type, source, content, CaptureCallstack());
 
             lock (_gate)
@@ -127,9 +167,51 @@ namespace reromanlee.ConsoleContainer
             }
 
             ConsoleRegistry.NotifyMessageAdded(this);
+
+            RaiseCreated(type, message);
 #else
             ForwardToUnityConsole(type, source, content);
+
+            // Player builds keep no history, so the entry is only worth
+            // allocating when something is actually listening for it.
+            if (HasListener(type))
+            {
+                RaiseCreated(type, new ConsoleMessage(type, source, content, null));
+            }
 #endif
+        }
+
+        private void RaiseCreated(MessageType type, ConsoleMessage message)
+        {
+            Invoke(MessageCreated, message);
+
+            if (type == MessageType.Error)
+            {
+                Invoke(ErrorCreated, message);
+            }
+        }
+
+        // The handler is copied into a parameter before it is called, so a
+        // concurrent unsubscribe cannot turn the invocation into a null call.
+        private static void Invoke(Action<ConsoleMessage> handler, ConsoleMessage message)
+        {
+            if (handler == null)
+            {
+                return;
+            }
+
+            try
+            {
+                handler(message);
+            }
+            catch (Exception exception)
+            {
+                // A faulty subscriber must never break the logging call that
+                // triggered it. Report it through Unity's exception channel
+                // instead, the way an unhandled event handler is normally
+                // surfaced.
+                Debug.LogException(exception);
+            }
         }
 
         private static string ResolveSource(object source)
@@ -253,6 +335,11 @@ namespace reromanlee.ConsoleContainer
                     break;
             }
         }
+
+        // Cheap pre-check that keeps a build from allocating a ConsoleMessage
+        // nobody would receive.
+        private bool HasListener(MessageType type)
+            => MessageCreated != null || (type == MessageType.Error && ErrorCreated != null);
 #endif
     }
 }
