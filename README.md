@@ -43,7 +43,7 @@ like the built-in Unity Console.
 3. Enter:
 
    ```
-   https://github.com/reromanlee/ConsoleContainer.git
+   https://github.com/reromanlee/ConsoleContainer.git?path=/UnityPackage
    ```
 
 **Or edit `Packages/manifest.json` directly**
@@ -51,13 +51,17 @@ like the built-in Unity Console.
 ```json
 {
   "dependencies": {
-    "com.reromanlee.consolecontainer": "https://github.com/reromanlee/ConsoleContainer.git"
+    "com.reromanlee.consolecontainer": "https://github.com/reromanlee/ConsoleContainer.git?path=/UnityPackage"
   }
 }
 ```
 
-**Or install locally** by cloning the repository into your project's `Packages/`
-folder.
+To pin a release, append its tag after the path, e.g. `?path=/UnityPackage#1.3.0`.
+Releases up to and including `1.2.0` predate the `UnityPackage` folder and are
+installed without `?path`: `https://github.com/reromanlee/ConsoleContainer.git#1.2.0`.
+
+**Or install locally** by cloning the repository anywhere on disk and choosing
+`+` ▸ **Add package from disk…** ▸ `UnityPackage/package.json`.
 
 > Requires **Unity 6000.0 (Unity 6)** or newer.
 

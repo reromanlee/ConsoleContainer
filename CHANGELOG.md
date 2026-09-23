@@ -5,6 +5,16 @@ All notable changes to this package are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **The package now lives in the repository's `UnityPackage/` folder.** Git URL
+  installs must add `?path=/UnityPackage`
+  (`https://github.com/reromanlee/ConsoleContainer.git?path=/UnityPackage`); an
+  unpinned URL without it no longer resolves. Installs pinned to `#1.2.0` or
+  earlier keep working unchanged.
+
 ## [1.2.0] - 2026-08-11
 
 ### Added
@@ -102,9 +112,9 @@ Initial release.
 - **Console Container Demo sample** — an importable MonoBehaviour that logs to
   several named instances continuously, including from a background thread.
 
-[1.0.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.0.0
-[1.1.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.1.0
-[1.2.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/v1.2.0
+[1.0.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/1.0.0
+[1.1.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/1.1.0
+[1.2.0]: https://github.com/reromanlee/ConsoleContainer/releases/tag/1.2.0
 [#3]: https://github.com/reromanlee/ConsoleContainer/issues/3
 [#4]: https://github.com/reromanlee/ConsoleContainer/issues/4
 [#5]: https://github.com/reromanlee/ConsoleContainer/issues/5
