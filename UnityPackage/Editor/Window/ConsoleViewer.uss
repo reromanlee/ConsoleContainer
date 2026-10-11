@@ -1,0 +1,175 @@
+.content-root {
+    flex-grow: 1;
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-left: 0;
+    padding-right: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+}
+
+.clear-button {
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: space-around;
+    align-items: auto;
+    align-self: flex-start;
+    height: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-left-color: rgb(89, 89, 89);
+    border-right-color: rgb(89, 89, 89);
+    border-top-color: rgb(89, 89, 89);
+    border-bottom-color: rgb(89, 89, 89);
+    border-right-width: 1px;
+}
+
+.clear-button:hover {
+    background-color: rgb(70, 70, 70);
+}
+
+.unity-popup-field__input {
+    margin-top: 0;
+    margin-right: 0;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-left: 5px;
+    padding-right: 5px;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-top-width: 0;
+    border-right-width: 0;
+    border-bottom-width: 0;
+    border-left-width: 1px;
+    border-left-color: rgb(35, 35, 35);
+    border-right-color: rgb(35, 35, 35);
+    border-top-color: rgb(35, 35, 35);
+    border-bottom-color: rgb(35, 35, 35);
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    background-color: rgba(0, 0, 0, 0);
+}
+
+.unity-popup-field:hover {
+    background-color: rgb(70, 70, 70);
+}
+
+.scroll-view-content {
+    flex-grow: 1;
+    background-color: rgb(56, 56, 56);
+}
+
+.message-label {
+    margin-top: 0;
+    margin-right: 3px;
+    margin-bottom: 0;
+    margin-left: 0;
+    padding-top: 0;
+    padding-right: 0;
+    padding-bottom: 0;
+    padding-left: 0;
+    color: rgb(255, 255, 255);
+    -unity-text-align: upper-left;
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 12px;
+    -unity-font-style: normal;
+}
+
+.label-warning {
+    color: rgb(254, 193, 7);
+}
+
+.label-error {
+    color: rgb(255, 110, 63);
+}
+
+.message-container {
+    flex-direction: row;
+    flex-shrink: 0;
+    flex-grow: 0;
+    overflow: hidden;
+    align-items: center;
+    padding-top: 1px;
+    padding-bottom: 1px;
+}
+
+.message-container:hover {
+    background-color: rgba(255, 255, 255, 0.102);
+}
+
+.message-container-even {
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+#unity-content-container {
+    flex-shrink: 0;
+    flex-grow: 1;
+}
+
+.header-container {
+    flex-grow: 0;
+    flex-shrink: 0;
+    height: 20px;
+    background-color: rgb(60, 60, 60);
+    border-left-color: rgb(35, 35, 35);
+    border-right-color: rgb(35, 35, 35);
+    border-top-color: rgb(35, 35, 35);
+    border-bottom-color: rgb(35, 35, 35);
+    border-bottom-width: 1px;
+    justify-content: space-between;
+    align-self: auto;
+    flex-direction: row;
+}
+
+.copy-button {
+    flex-grow: 0;
+    flex-shrink: 0;
+    justify-content: space-around;
+    align-items: auto;
+    align-self: flex-start;
+    height: 100%;
+    padding-left: 10px;
+    padding-right: 10px;
+    border-left-color: rgb(89, 89, 89);
+    border-right-color: rgb(89, 89, 89);
+    border-top-color: rgb(89, 89, 89);
+    border-bottom-color: rgb(89, 89, 89);
+    border-left-width: 1px;
+}
+
+.copy-button:hover {
+    background-color: rgb(70, 70, 70);
+}
+
+.callstack-button {
+    margin-top: 3px;
+    margin-right: 3px;
+    margin-bottom: 0;
+    margin-left: 3px;
+    padding-top: 3px;
+    padding-right: 3px;
+    padding-bottom: 3px;
+    padding-left: 10px;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+}
+
+.message-container.message-container-selected {
+    background-color: rgb(44, 93, 135);
+}
+
+.message-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/info.png?fileID=2800000&guid=82f57434a9e7fca479ac49d21bc55e98&type=3#info");
+    margin-top: 0;
+    margin-right: 3px;
+    margin-bottom: 0;
+    margin-left: 3px;
+}

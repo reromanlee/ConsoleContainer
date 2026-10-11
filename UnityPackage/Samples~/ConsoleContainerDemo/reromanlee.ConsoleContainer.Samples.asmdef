@@ -1,0 +1,16 @@
+{
+    "name": "reromanlee.ConsoleContainer.Samples",
+    "rootNamespace": "reromanlee.ConsoleContainer.Samples",
+    "references": [
+        "reromanlee.ConsoleContainer"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

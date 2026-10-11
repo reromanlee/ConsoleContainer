@@ -1,0 +1,52 @@
+# Line-ending policy (this is about LF vs CRLF line terminators, not text
+# encoding). Committing it here pins the behaviour for every clone, instead of
+# relying on each machine's core.autocrlf setting.
+#
+# Default: treat as text, store LF in the repository, and check out LF on every
+# platform. Keeps the working tree deterministic and matches what Unity writes.
+* text=auto eol=lf
+
+# --- Explicit text types --------------------------------------------------
+*.cs        text eol=lf diff=csharp
+*.uxml      text eol=lf
+*.uss       text eol=lf
+*.asmdef    text eol=lf
+*.json      text eol=lf
+*.md        text eol=lf
+*.meta      text eol=lf
+*.txt       text eol=lf
+*.shader    text eol=lf
+*.cginc     text eol=lf
+*.hlsl      text eol=lf
+
+# --- Unity YAML assets (text, so they stay diffable) ----------------------
+*.unity      text eol=lf
+*.prefab     text eol=lf
+*.asset      text eol=lf
+*.mat        text eol=lf
+*.anim       text eol=lf
+*.controller text eol=lf
+
+# --- Binary assets: never converted, never line-diffed --------------------
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.tga   binary
+*.tif   binary
+*.tiff  binary
+*.psd   binary
+*.ico   binary
+*.fbx   binary
+*.obj   binary
+*.blend binary
+*.wav   binary
+*.mp3   binary
+*.ogg   binary
+*.aif   binary
+*.ttf   binary
+*.otf   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.unitypackage binary
