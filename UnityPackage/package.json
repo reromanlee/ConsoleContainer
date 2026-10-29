@@ -1,8 +1,8 @@
 {
   "name": "com.reromanlee.consolecontainer",
-  "version": "1.2.0",
+  "version": "1.0.0",
   "displayName": "ConsoleContainer",
-  "description": "Per-context logging containers that keep debug output out of the Unity Console. Create named console instances, view them in a dedicated editor window with chronological merging and IDE call-stack navigation, and optionally forward messages to Debug logs in player builds.",
+  "description": "Named, per-system log containers that keep debug output out of the Unity Console. Browse them in a searchable, virtualized Console Viewer with chronological merging and clickable call stacks, react to messages and exceptions through events in any build, and choose per message type what reaches the Unity log.",
   "unity": "2022.3",
   "license": "MIT",
   "documentationUrl": "https://github.com/reromanlee/ConsoleContainer#readme",
@@ -10,9 +10,10 @@
   "keywords": [
     "console",
     "logging",
+    "logger",
     "debug",
     "editor",
-    "logger",
+    "exceptions",
     "uielements"
   ],
   "licensesUrl": "https://github.com/reromanlee/ConsoleContainer/blob/main/LICENSE.md",
@@ -24,7 +25,7 @@
   "samples": [
     {
       "displayName": "Console Container Demo",
-      "description": "A MonoBehaviour that spins up several named console instances and logs to them continuously — including from a background thread — to showcase the Console Viewer.",
+      "description": "A MonoBehaviour that spins up several named console instances and logs to them continuously, including from a background thread and with caught exceptions, to showcase the Console Viewer.",
       "path": "Samples~/ConsoleContainerDemo"
     }
   ]
