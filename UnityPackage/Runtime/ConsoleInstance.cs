@@ -34,7 +34,15 @@ namespace reromanlee.ConsoleContainer
         // instead of holding on to capacity it is unlikely to need again.
         private const int ClearedCapacityTrimThreshold = 1024;
 
+        // How deeply handlers may log from inside other handlers on one thread before events stop
+        // being raised. Generous for legitimate chains, far below any stack limit.
+        private const int MaximumDispatchDepth = 8;
+
         private static int _instanceCounter;
+        private static int _recursionReported;
+
+        [ThreadStatic]
+        private static int _dispatchDepth;
 
         private readonly object _gate = new object();
         private readonly List<ConsoleMessage> _messages = new List<ConsoleMessage>();
@@ -270,23 +278,34 @@ namespace reromanlee.ConsoleContainer
 #endif
         }
 
+        // Handlers are copied out of the events first, so a concurrent unsubscribe cannot turn an
+        // invocation into a null call.
         private void RaiseCreated(ConsoleMessageType type, ConsoleMessage message)
         {
-            Invoke(MessageCreated, message);
+            Action<ConsoleMessage> messageHandler = MessageCreated;
+            Action<ConsoleMessage> errorHandler = type == ConsoleMessageType.Error ? ErrorCreated : null;
 
-            if (type == ConsoleMessageType.Error)
+            if ((messageHandler == null && errorHandler == null) || !TryEnterDispatch())
             {
-                Invoke(ErrorCreated, message);
+                return;
+            }
+
+            try
+            {
+                Invoke(messageHandler, message);
+                Invoke(errorHandler, message);
+            }
+            finally
+            {
+                _dispatchDepth--;
             }
         }
 
-        // Mirrors Invoke below: the handler is copied out of the static event first, so a
-        // concurrent unsubscribe cannot turn the invocation into a null call.
         private static void RaiseCreated(IConsoleInstance instance)
         {
             Action<IConsoleInstance> handler = Created;
 
-            if (handler == null)
+            if (handler == null || !TryEnterDispatch())
             {
                 return;
             }
@@ -300,6 +319,39 @@ namespace reromanlee.ConsoleContainer
                 // A faulty subscriber must never break the construction that triggered it.
                 Debug.LogException(exception);
             }
+            finally
+            {
+                _dispatchDepth--;
+            }
+        }
+
+        // A handler that logs into what it observes (or constructs an instance from Created) would
+        // recurse until the stack overflows, which no catch can stop and which takes the whole
+        // process down. Nesting is therefore capped per thread: deeper messages are still kept and
+        // forwarded, only their events are skipped.
+        private static bool TryEnterDispatch()
+        {
+            if (_dispatchDepth >= MaximumDispatchDepth)
+            {
+                ReportRecursion();
+                return false;
+            }
+
+            _dispatchDepth++;
+            return true;
+        }
+
+        private static void ReportRecursion()
+        {
+            if (Interlocked.Exchange(ref _recursionReported, 1) != 0)
+            {
+                return;
+            }
+
+            Debug.LogWarning(
+                $"ConsoleContainer: event handlers kept logging from inside other handlers more than {MaximumDispatchDepth} " +
+                "levels deep. Events for the deeper messages were skipped to prevent a stack overflow; the messages " +
+                "themselves are still kept. This is reported once per session.");
         }
 
         // The handler is copied into a parameter before it is called, so a
