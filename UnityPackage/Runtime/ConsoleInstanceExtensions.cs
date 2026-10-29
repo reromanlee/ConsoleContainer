@@ -6,8 +6,9 @@ namespace reromanlee.ConsoleContainer
     /// Logging shortcuts for any <see cref="IConsoleInstance"/>.
     ///
     /// The <c>source</c> names whatever produced the message: a <see cref="string"/> is used as is,
-    /// and any other object contributes its type name. Content arguments are joined with single
-    /// spaces. Nothing is built when the instance reports the message type as disabled.
+    /// a <see cref="Type"/> contributes its own name (handy in static classes), and any other object
+    /// contributes its type's name. Content arguments are joined with single spaces. Nothing is
+    /// built when the instance reports the message type as disabled.
     /// </summary>
     public static class ConsoleInstanceExtensions
     {
@@ -40,7 +41,7 @@ namespace reromanlee.ConsoleContainer
 
             if (console.IsEnabled(type))
             {
-                console.Create(type, ResolveSource(source), message ?? string.Empty);
+                console.Create(type, SourceNames.Resolve(source), message ?? string.Empty);
             }
         }
 
@@ -53,12 +54,9 @@ namespace reromanlee.ConsoleContainer
 
             if (console.IsEnabled(type))
             {
-                console.Create(type, ResolveSource(source), Join(messageContent));
+                console.Create(type, SourceNames.Resolve(source), Join(messageContent));
             }
         }
-
-        private static string ResolveSource(object source)
-            => source is string text ? text : source?.GetType().Name;
 
         private static string Join(string[] messageContent)
         {
