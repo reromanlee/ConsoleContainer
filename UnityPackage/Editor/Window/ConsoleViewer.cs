@@ -201,6 +201,11 @@ namespace reromanlee.ConsoleContainer.Editor
             rootVisualElement.Add(root);
             viewer.EnableInClassList(LightThemeClass, !EditorGUIUtility.isProSkin);
 
+            // A window can be disabled and enabled again without being recreated, so state that
+            // belonged to the previous layout is dropped: a scroll scheduled on its list would
+            // otherwise never complete and block every later one.
+            pendingScroll = ScrollTarget.None;
+
             // Applied before the first layout pass, so the panes come up at their remembered sizes
             // instead of visibly snapping into place.
             RestorePaneSizes();
@@ -477,6 +482,9 @@ namespace reromanlee.ConsoleContainer.Editor
         private void SetUpTypeToggle(ConsoleMessageType type, bool shown)
         {
             ToolbarToggle toggle = typeToggles[(int)type];
+
+            // A freshly built toggle shows no count yet, whatever the previous layout showed.
+            shownCounts[(int)type] = -1;
 
             // The icon sits before the count inside the toggle's own content.
             VisualElement icon = new VisualElement { pickingMode = PickingMode.Ignore };
