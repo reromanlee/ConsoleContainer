@@ -80,6 +80,15 @@ namespace reromanlee.ConsoleContainer
             RaiseChanged();
         }
 
+        /// <summary>Clears every registered instance.</summary>
+        internal static void ClearAll()
+        {
+            foreach (ConsoleInstance instance in Snapshot())
+            {
+                instance.Clear();
+            }
+        }
+
         internal static void NotifyMessageAdded()
         {
             RaiseChanged();

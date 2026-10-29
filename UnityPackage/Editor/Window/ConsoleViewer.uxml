@@ -3,6 +3,7 @@
     <ui:VisualElement name="console-viewer" class="console-viewer">
         <uie:Toolbar name="toolbar" class="console-viewer__toolbar">
             <uie:ToolbarButton name="clear-button" text="Clear" tooltip="Clear the selected instance, or every instance while All Instances is selected."/>
+            <uie:ToolbarToggle name="clear-on-play-toggle" text="Clear on Play" tooltip="Clear every instance when entering play mode. Shared by all Console Viewer windows."/>
             <uie:ToolbarMenu name="instance-menu" class="console-viewer__instance-menu" tooltip="Instance to show."/>
             <uie:ToolbarSpacer class="console-viewer__toolbar-spacer"/>
             <uie:ToolbarSearchField name="search-field" class="console-viewer__search" tooltip="Show only messages whose source or content contains this text (case-insensitive)."/>

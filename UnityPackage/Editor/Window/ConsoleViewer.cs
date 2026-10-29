@@ -60,6 +60,7 @@ namespace reromanlee.ConsoleContainer.Editor
         private readonly int[] shownCounts = { -1, -1, -1 };
 
         private ToolbarMenu instanceMenu;
+        private ToolbarToggle clearOnPlayToggle;
         private ListView messageList;
         private ScrollView messageScrollView;
         private TwoPaneSplitView mainSplitView;
@@ -111,6 +112,7 @@ namespace reromanlee.ConsoleContainer.Editor
             }
 
             ConsoleRegistry.Changed += OnRegistryChanged;
+            ClearOnPlay.Changed += OnClearOnPlayChanged;
             EditorApplication.update += OnEditorUpdate;
 
             lastClearGeneration = ConsoleRegistry.ClearGeneration;
@@ -131,6 +133,7 @@ namespace reromanlee.ConsoleContainer.Editor
             UnregisterViewStateTracking();
 
             ConsoleRegistry.Changed -= OnRegistryChanged;
+            ClearOnPlay.Changed -= OnClearOnPlayChanged;
             EditorApplication.update -= OnEditorUpdate;
             isBuilt = false;
         }
@@ -162,6 +165,7 @@ namespace reromanlee.ConsoleContainer.Editor
             List<string> missing = new List<string>();
             VisualElement viewer = Find<VisualElement>(root, "console-viewer", missing);
             ToolbarButton clearButton = Find<ToolbarButton>(root, "clear-button", missing);
+            clearOnPlayToggle = Find<ToolbarToggle>(root, "clear-on-play-toggle", missing);
             ToolbarButton copyButton = Find<ToolbarButton>(root, "copy-button", missing);
             instanceMenu = Find<ToolbarMenu>(root, "instance-menu", missing);
             ToolbarSearchField searchField = Find<ToolbarSearchField>(root, "search-field", missing);
@@ -191,6 +195,9 @@ namespace reromanlee.ConsoleContainer.Editor
 
             clearButton.clicked += OnClearClicked;
             copyButton.clicked += CopySelected;
+
+            clearOnPlayToggle.SetValueWithoutNotify(ClearOnPlay.Enabled);
+            clearOnPlayToggle.RegisterValueChangedCallback(evt => ClearOnPlay.Enabled = evt.newValue);
 
             searchField.SetValueWithoutNotify(searchText ?? string.Empty);
             searchField.RegisterValueChangedCallback(OnSearchChanged);
@@ -244,6 +251,9 @@ namespace reromanlee.ConsoleContainer.Editor
         }
 
         private void OnRegistryChanged() => dirty = true;
+
+        // The preference is shared, so a change made in one window shows in every other.
+        private void OnClearOnPlayChanged() => clearOnPlayToggle.SetValueWithoutNotify(ClearOnPlay.Enabled);
 
         private void OnEditorUpdate()
         {
