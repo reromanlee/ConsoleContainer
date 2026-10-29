@@ -511,9 +511,12 @@ namespace reromanlee.ConsoleContainer.Editor
             }
         }
 
-        private void OnSearchChanged(ChangeEvent<string> evt)
+        private void OnSearchChanged(ChangeEvent<string> evt) => ApplySearch(evt.newValue);
+
+        /// <summary>Filters the list to messages whose source or content contains <paramref name="text"/>.</summary>
+        internal void ApplySearch(string text)
         {
-            searchText = evt.newValue ?? string.Empty;
+            searchText = text ?? string.Empty;
             if (feed.SetSearch(searchText))
             {
                 RefreshList(FeedChange.Reordered, reloaded: true);
