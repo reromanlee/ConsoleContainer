@@ -80,7 +80,7 @@ namespace reromanlee.ConsoleContainer
             RaiseChanged();
         }
 
-        internal static void NotifyMessageAdded(ConsoleInstance instance)
+        internal static void NotifyMessageAdded()
         {
             RaiseChanged();
         }

@@ -197,11 +197,11 @@ namespace reromanlee.ConsoleContainer
             // the history; threads logging concurrently could otherwise store them out of order.
             lock (_gate)
             {
-                message = new ConsoleMessage(type, source, content, exception, callstack);
+                message = new ConsoleMessage(this, type, source, content, exception, callstack);
                 _history.Add(message, limit);
             }
 
-            ConsoleRegistry.NotifyMessageAdded(this);
+            ConsoleRegistry.NotifyMessageAdded();
 
             if (UnityConsoleForwarding.ShouldForward(type))
             {
@@ -219,7 +219,7 @@ namespace reromanlee.ConsoleContainer
             // allocating when something is actually listening for it.
             if (HasListener(type))
             {
-                RaiseCreated(type, new ConsoleMessage(type, source, content, exception, null));
+                RaiseCreated(type, new ConsoleMessage(this, type, source, content, exception, null));
             }
 #endif
         }
@@ -238,13 +238,13 @@ namespace reromanlee.ConsoleContainer
                 _history.Clear();
             }
 
+            // Always reported as a clear, so every viewer drops what it copied even when the
+            // instance is about to leave the registry.
+            ConsoleRegistry.NotifyCleared(this);
+
             if (IsDisposed)
             {
                 ConsoleRegistry.Unregister(this);
-            }
-            else
-            {
-                ConsoleRegistry.NotifyCleared(this);
             }
 #endif
         }
@@ -407,6 +407,21 @@ namespace reromanlee.ConsoleContainer
         }
 
 #if UNITY_EDITOR
+        /// <summary>
+        /// Copies every message added since <paramref name="cursor"/> into
+        /// <paramref name="destination"/>, oldest first, and returns the cursor to resume from.
+        /// <paramref name="startPosition"/> receives the cursor of the oldest message still held,
+        /// so a reader can tell which of its copies the history has dropped since.
+        /// </summary>
+        internal long CollectSince(long cursor, List<ConsoleMessage> destination, out long startPosition)
+        {
+            lock (_gate)
+            {
+                startPosition = _history.StartPosition;
+                return _history.CopySince(cursor, destination);
+            }
+        }
+
         /// <summary>
         /// Copies messages created after <paramref name="afterSequence"/> into
         /// <paramref name="buffer"/>. Consumed by the viewer for incremental

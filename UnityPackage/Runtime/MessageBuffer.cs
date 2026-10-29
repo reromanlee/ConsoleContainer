@@ -61,6 +61,7 @@ namespace reromanlee.ConsoleContainer
                 Grow(effectiveLimit);
             }
 
+            message.Position = endPosition;
             items[Wrap(head + count)] = message;
             count++;
             endPosition++;

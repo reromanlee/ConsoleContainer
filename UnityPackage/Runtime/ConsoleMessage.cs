@@ -54,8 +54,15 @@ namespace reromanlee.ConsoleContainer
         /// </summary>
         public Exception Exception { get; }
 
-        internal ConsoleMessage(ConsoleMessageType type, string source, string content, Exception exception, IReadOnlyList<CallstackFrame> callstack)
+        /// <summary>The instance that created the message.</summary>
+        internal ConsoleInstance Owner { get; }
+
+        /// <summary>Cursor of the message within its owner's history; assigned when it is stored.</summary>
+        internal long Position { get; set; }
+
+        internal ConsoleMessage(ConsoleInstance owner, ConsoleMessageType type, string source, string content, Exception exception, IReadOnlyList<CallstackFrame> callstack)
         {
+            Owner = owner;
             Timestamp = DateTime.Now;
             Sequence = Interlocked.Increment(ref _globalSequence);
             Type = type;
