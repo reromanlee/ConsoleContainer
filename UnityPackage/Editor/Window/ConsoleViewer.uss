@@ -1,175 +1,132 @@
-.content-root {
+/* Layout and controls come from Unity's own editor theme (Toolbar, ListView, ScrollView), so the
+   window follows the Dark and Light skins. Only the message colours differ per skin, through the
+   console-viewer--light class the window sets on the Light skin. */
+
+.console-viewer {
     flex-grow: 1;
-    margin-top: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-    margin-left: 0;
-    padding-left: 0;
-    padding-right: 0;
-    padding-top: 0;
-    padding-bottom: 0;
 }
 
-.clear-button {
-    flex-grow: 0;
+.console-viewer__toolbar,
+.console-viewer__details-toolbar {
     flex-shrink: 0;
-    justify-content: space-around;
-    align-items: auto;
-    align-self: flex-start;
-    height: 100%;
-    padding-left: 10px;
-    padding-right: 10px;
-    border-left-color: rgb(89, 89, 89);
-    border-right-color: rgb(89, 89, 89);
-    border-top-color: rgb(89, 89, 89);
-    border-bottom-color: rgb(89, 89, 89);
-    border-right-width: 1px;
 }
 
-.clear-button:hover {
-    background-color: rgb(70, 70, 70);
-}
-
-.unity-popup-field__input {
-    margin-top: 0;
-    margin-right: 0;
-    margin-bottom: 0;
-    margin-left: 0;
-    padding-left: 5px;
-    padding-right: 5px;
-    padding-top: 0;
-    padding-bottom: 0;
-    border-top-width: 0;
-    border-right-width: 0;
-    border-bottom-width: 0;
-    border-left-width: 1px;
-    border-left-color: rgb(35, 35, 35);
-    border-right-color: rgb(35, 35, 35);
-    border-top-color: rgb(35, 35, 35);
-    border-bottom-color: rgb(35, 35, 35);
-    border-top-left-radius: 0;
-    border-bottom-left-radius: 0;
-    border-top-right-radius: 0;
-    border-bottom-right-radius: 0;
-    background-color: rgba(0, 0, 0, 0);
-}
-
-.unity-popup-field:hover {
-    background-color: rgb(70, 70, 70);
-}
-
-.scroll-view-content {
+.console-viewer__toolbar-spacer {
     flex-grow: 1;
-    background-color: rgb(56, 56, 56);
 }
 
-.message-label {
-    margin-top: 0;
-    margin-right: 3px;
-    margin-bottom: 0;
-    margin-left: 0;
-    padding-top: 0;
-    padding-right: 0;
-    padding-bottom: 0;
-    padding-left: 0;
-    color: rgb(255, 255, 255);
-    -unity-text-align: upper-left;
-    white-space: nowrap;
-    flex-shrink: 0;
-    font-size: 12px;
-    -unity-font-style: normal;
+.console-viewer__instance-menu {
+    min-width: 140px;
+    max-width: 280px;
 }
 
-.label-warning {
-    color: rgb(254, 193, 7);
+.console-viewer__message-list {
+    flex-grow: 1;
+    min-height: 60px;
 }
 
-.label-error {
-    color: rgb(255, 110, 63);
-}
+/* Message rows */
 
-.message-container {
+.message-row {
     flex-direction: row;
-    flex-shrink: 0;
-    flex-grow: 0;
-    overflow: hidden;
     align-items: center;
-    padding-top: 1px;
-    padding-bottom: 1px;
-}
-
-.message-container:hover {
-    background-color: rgba(255, 255, 255, 0.102);
-}
-
-.message-container-even {
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-#unity-content-container {
-    flex-shrink: 0;
-    flex-grow: 1;
-}
-
-.header-container {
-    flex-grow: 0;
-    flex-shrink: 0;
-    height: 20px;
-    background-color: rgb(60, 60, 60);
-    border-left-color: rgb(35, 35, 35);
-    border-right-color: rgb(35, 35, 35);
-    border-top-color: rgb(35, 35, 35);
-    border-bottom-color: rgb(35, 35, 35);
-    border-bottom-width: 1px;
-    justify-content: space-between;
-    align-self: auto;
-    flex-direction: row;
-}
-
-.copy-button {
-    flex-grow: 0;
-    flex-shrink: 0;
-    justify-content: space-around;
-    align-items: auto;
-    align-self: flex-start;
     height: 100%;
-    padding-left: 10px;
-    padding-right: 10px;
-    border-left-color: rgb(89, 89, 89);
-    border-right-color: rgb(89, 89, 89);
-    border-top-color: rgb(89, 89, 89);
-    border-bottom-color: rgb(89, 89, 89);
-    border-left-width: 1px;
-}
-
-.copy-button:hover {
-    background-color: rgb(70, 70, 70);
-}
-
-.callstack-button {
-    margin-top: 3px;
-    margin-right: 3px;
-    margin-bottom: 0;
-    margin-left: 3px;
-    padding-top: 3px;
+    padding-left: 3px;
     padding-right: 3px;
-    padding-bottom: 3px;
-    padding-left: 10px;
-    -unity-text-align: middle-left;
-    overflow: hidden;
 }
 
-.message-container.message-container-selected {
-    background-color: rgb(44, 93, 135);
-}
-
-.message-icon {
+.message-row__icon {
     flex-shrink: 0;
     width: 16px;
     height: 16px;
+    margin-right: 4px;
     background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/info.png?fileID=2800000&guid=82f57434a9e7fca479ac49d21bc55e98&type=3#info");
-    margin-top: 0;
-    margin-right: 3px;
-    margin-bottom: 0;
-    margin-left: 3px;
+}
+
+.message-row--warning > .message-row__icon {
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/warning.png?fileID=2800000&guid=8d98323fa783d0a47a1498bcc7fb5a98&type=3#warning");
+}
+
+.message-row--error > .message-row__icon {
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/error.png?fileID=2800000&guid=5ac7acc60d94c444d8561bdf4d6004ef&type=3#error");
+}
+
+.message-row__time,
+.message-row__text {
+    margin: 0;
+    padding: 0;
+    -unity-text-align: middle-left;
+    white-space: nowrap;
+}
+
+.message-row__time {
+    flex-shrink: 0;
+    margin-right: 6px;
+    opacity: 0.75;
+}
+
+.message-row__text {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.message-row--warning > .message-row__text {
+    color: rgb(254, 193, 7);
+}
+
+.message-row--error > .message-row__text {
+    color: rgb(255, 110, 63);
+}
+
+.console-viewer--light .message-row--warning > .message-row__text {
+    color: rgb(138, 96, 0);
+}
+
+.console-viewer--light .message-row--error > .message-row__text {
+    color: rgb(198, 40, 40);
+}
+
+/* Details pane */
+
+.console-viewer__details {
+    flex-grow: 1;
+    min-height: 80px;
+}
+
+.console-viewer__details-instance {
+    -unity-text-align: middle-left;
+    padding-left: 6px;
+    -unity-font-style: bold;
+}
+
+.console-viewer__callstack {
+    min-width: 120px;
+}
+
+.console-viewer__details-scroll {
+    flex-grow: 1;
+    min-width: 150px;
+}
+
+.console-viewer__details-label {
+    white-space: normal;
+    padding: 4px;
+    -unity-text-align: upper-left;
+}
+
+.callstack-button {
+    margin: 2px 3px 0 3px;
+    padding-left: 8px;
+    -unity-text-align: middle-left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Fallback shown when the window's layout asset cannot be loaded. */
+
+.console-viewer__load-error {
+    margin: 8px;
 }

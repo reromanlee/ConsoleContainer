@@ -422,31 +422,6 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
-        /// <summary>
-        /// Copies messages created after <paramref name="afterSequence"/> into
-        /// <paramref name="buffer"/>. Consumed by the viewer for incremental
-        /// appends; the caller sorts the merged result by
-        /// <see cref="ConsoleMessage.Sequence"/>.
-        /// </summary>
-        internal void CollectMessagesAfter(long afterSequence, List<ConsoleMessage> buffer)
-        {
-            lock (_gate)
-            {
-                // History is kept oldest first and therefore sorted ascending
-                // by Sequence, so the new messages are a contiguous suffix.
-                for (int i = _history.Count - 1; i >= 0; i--)
-                {
-                    ConsoleMessage message = _history[i];
-                    if (message.Sequence <= afterSequence)
-                    {
-                        break;
-                    }
-
-                    buffer.Add(message);
-                }
-            }
-        }
-
         private bool HasMessages()
         {
             lock (_gate)
