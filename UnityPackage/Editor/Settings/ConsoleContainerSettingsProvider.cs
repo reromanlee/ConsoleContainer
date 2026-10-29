@@ -51,8 +51,9 @@ namespace reromanlee.ConsoleContainer.Editor
             string fileName = Path.GetFileNameWithoutExtension(normalized);
             string folderName = Path.GetFileName(Path.GetDirectoryName(normalized) ?? string.Empty);
 
-            // Resources.Load finds an asset with exactly this name at the root of a Resources folder.
-            if (!string.Equals(fileName, ConsoleContainerSettings.ResourcesPath, StringComparison.Ordinal)
+            // Resources.Load finds an asset with this name, in any letter case, at the root of a
+            // Resources folder.
+            if (!string.Equals(fileName, ConsoleContainerSettings.ResourcesPath, StringComparison.OrdinalIgnoreCase)
                 || !string.Equals(folderName, ResourcesFolderName, StringComparison.OrdinalIgnoreCase))
             {
                 return AssetPlacement.Ignored;
