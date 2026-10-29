@@ -29,6 +29,9 @@ namespace reromanlee.ConsoleContainer
         /// <summary>Per-type editor forwarding used when no settings asset exists.</summary>
         internal const bool DefaultLogInEditor = true;
 
+        /// <summary>Per-type editor call stack capture used when no settings asset exists.</summary>
+        internal const bool DefaultCaptureCallstack = true;
+
         [Header("Player build logging")]
         [Tooltip("Forward Text messages to Debug.Log in player builds.")]
         [SerializeField] private bool logTextInBuild = true;
@@ -55,6 +58,18 @@ namespace reromanlee.ConsoleContainer
                  "declared with LogAssert.Expect.")]
         [SerializeField] private bool logErrorsInEditor = DefaultLogInEditor;
 
+        [Header("Editor history")]
+        [Tooltip("Capture a clickable call stack for Text messages in the editor. Stack capture is by far " +
+                 "the most expensive part of a log call; turn it off for messages logged on hot paths.")]
+        [SerializeField] private bool captureTextCallstack = DefaultCaptureCallstack;
+
+        [Tooltip("Capture a clickable call stack for Warning messages in the editor.")]
+        [SerializeField] private bool captureWarningCallstack = DefaultCaptureCallstack;
+
+        [Tooltip("Capture a clickable call stack for Error messages in the editor. " +
+                 "Messages that report an exception always show where it was thrown.")]
+        [SerializeField] private bool captureErrorCallstack = DefaultCaptureCallstack;
+
         public bool LogTextInBuild => logTextInBuild;
         public bool LogWarningsInBuild => logWarningsInBuild;
         public bool LogErrorsInBuild => logErrorsInBuild;
@@ -65,6 +80,15 @@ namespace reromanlee.ConsoleContainer
         public bool LogTextInEditor => logTextInEditor;
         public bool LogWarningsInEditor => logWarningsInEditor;
         public bool LogErrorsInEditor => logErrorsInEditor;
+
+        /// <summary>Whether Text messages capture a call stack in the editor.</summary>
+        public bool CaptureTextCallstack => captureTextCallstack;
+
+        /// <summary>Whether Warning messages capture a call stack in the editor.</summary>
+        public bool CaptureWarningCallstack => captureWarningCallstack;
+
+        /// <summary>Whether Error messages capture a call stack in the editor.</summary>
+        public bool CaptureErrorCallstack => captureErrorCallstack;
 
         private static volatile ConsoleContainerSettings _active;
         private static volatile bool _loaded;

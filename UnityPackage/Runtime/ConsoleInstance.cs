@@ -188,7 +188,9 @@ namespace reromanlee.ConsoleContainer
             // always built.
             CallstackFrame[] callstack = exception != null
                 ? CallstackCapture.FromException(exception)
-                : CallstackCapture.FromCurrentThread();
+                : EditorHistoryPolicy.ShouldCaptureCallstack(type)
+                    ? CallstackCapture.FromCurrentThread()
+                    : Array.Empty<CallstackFrame>();
 
             ConsoleMessage message = new ConsoleMessage(type, source, content, exception, callstack);
 
