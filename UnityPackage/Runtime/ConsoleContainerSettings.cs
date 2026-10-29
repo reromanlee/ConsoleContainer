@@ -12,10 +12,12 @@ namespace reromanlee.ConsoleContainer
     /// window (see <see cref="EditorForwardingMode"/>); it is limited to test
     /// runs by default so the Unity Console stays clean during normal work.
     ///
-    /// To take effect in a build, create one asset (Assets ▸ Create ▸
-    /// ConsoleContainer ▸ Settings) and place it inside any <c>Resources</c>
-    /// folder. When no asset exists, all messages are hidden in builds and the
-    /// editor defaults below apply.
+    /// To take effect in a build, create one asset from
+    /// <c>Project Settings ▸ Console Container</c> (or Assets ▸ Create ▸
+    /// ConsoleContainer ▸ Settings, placed directly inside any <c>Resources</c>
+    /// folder). When no asset exists, all messages are hidden in builds and the
+    /// editor defaults below apply. <see cref="Active"/> also accepts a settings
+    /// object created at runtime, which overrides the asset.
     /// </summary>
     [CreateAssetMenu(fileName = ResourcesPath, menuName = "ConsoleContainer/Settings", order = 0)]
     public sealed class ConsoleContainerSettings : ScriptableObject
@@ -78,48 +80,114 @@ namespace reromanlee.ConsoleContainer
                  "Messages that report an exception always show where it was thrown.")]
         [SerializeField] private bool captureErrorCallstack = DefaultCaptureCallstack;
 
-        public bool LogTextInBuild => logTextInBuild;
-        public bool LogWarningsInBuild => logWarningsInBuild;
-        public bool LogErrorsInBuild => logErrorsInBuild;
+        /// <summary>Whether Text messages are forwarded to <c>Debug.Log</c> in player builds.</summary>
+        public bool LogTextInBuild
+        {
+            get => logTextInBuild;
+            set => logTextInBuild = value;
+        }
+
+        /// <summary>Whether Warning messages are forwarded to <c>Debug.LogWarning</c> in player builds.</summary>
+        public bool LogWarningsInBuild
+        {
+            get => logWarningsInBuild;
+            set => logWarningsInBuild = value;
+        }
+
+        /// <summary>Whether Error messages are forwarded to <c>Debug.LogError</c> in player builds.</summary>
+        public bool LogErrorsInBuild
+        {
+            get => logErrorsInBuild;
+            set => logErrorsInBuild = value;
+        }
 
         /// <summary>When editor messages are mirrored into the Unity console.</summary>
-        public EditorForwardingMode EditorForwarding => editorForwarding;
+        public EditorForwardingMode EditorForwarding
+        {
+            get => editorForwarding;
+            set => editorForwarding = value;
+        }
 
-        public bool LogTextInEditor => logTextInEditor;
-        public bool LogWarningsInEditor => logWarningsInEditor;
-        public bool LogErrorsInEditor => logErrorsInEditor;
+        /// <summary>Whether Text messages are forwarded while editor forwarding is active.</summary>
+        public bool LogTextInEditor
+        {
+            get => logTextInEditor;
+            set => logTextInEditor = value;
+        }
+
+        /// <summary>Whether Warning messages are forwarded while editor forwarding is active.</summary>
+        public bool LogWarningsInEditor
+        {
+            get => logWarningsInEditor;
+            set => logWarningsInEditor = value;
+        }
+
+        /// <summary>Whether Error messages are forwarded while editor forwarding is active.</summary>
+        public bool LogErrorsInEditor
+        {
+            get => logErrorsInEditor;
+            set => logErrorsInEditor = value;
+        }
 
         /// <summary>Most messages each instance keeps in the editor before dropping the oldest; 0 keeps everything.</summary>
-        public int MaxMessagesPerInstance => maxMessagesPerInstance;
+        public int MaxMessagesPerInstance
+        {
+            get => maxMessagesPerInstance;
+            set => maxMessagesPerInstance = Math.Max(0, value);
+        }
 
         /// <summary>Whether Text messages capture a call stack in the editor.</summary>
-        public bool CaptureTextCallstack => captureTextCallstack;
+        public bool CaptureTextCallstack
+        {
+            get => captureTextCallstack;
+            set => captureTextCallstack = value;
+        }
 
         /// <summary>Whether Warning messages capture a call stack in the editor.</summary>
-        public bool CaptureWarningCallstack => captureWarningCallstack;
+        public bool CaptureWarningCallstack
+        {
+            get => captureWarningCallstack;
+            set => captureWarningCallstack = value;
+        }
 
         /// <summary>Whether Error messages capture a call stack in the editor.</summary>
-        public bool CaptureErrorCallstack => captureErrorCallstack;
+        public bool CaptureErrorCallstack
+        {
+            get => captureErrorCallstack;
+            set => captureErrorCallstack = value;
+        }
 
-        private static volatile ConsoleContainerSettings _active;
+        private static volatile ConsoleContainerSettings _asset;
+        private static volatile ConsoleContainerSettings _override;
         private static volatile bool _loaded;
         private static volatile int _mainThreadIdentifier;
 
         /// <summary>
-        /// The active settings asset loaded from <c>Resources</c>, or <c>null</c>
-        /// when none exists (package defaults then apply). The lookup is cached
-        /// after the first access.
+        /// The settings in effect: a runtime override when one is installed, otherwise the asset
+        /// loaded from <c>Resources</c>, or <c>null</c> when neither exists (package defaults then
+        /// apply).
         ///
-        /// <see cref="Resources"/> is a main-thread-only API, so the lookup only
-        /// ever runs on the main thread; anywhere else this returns the last
-        /// resolved value rather than risking an exception. Because the cache is
-        /// warmed at startup, that only matters for a background thread logging
-        /// before the very first load.
+        /// Assign a settings object created at runtime (<c>ScriptableObject.CreateInstance</c>) to
+        /// change behaviour from code — a QA menu turning build logging on, a test silencing
+        /// forwarding — without touching the project asset, whose properties would persist to disk
+        /// if changed in the editor. Assign <c>null</c> to return to the asset. An override lasts
+        /// until it is replaced, destroyed, or play mode starts again.
+        ///
+        /// Safe to read from any thread. <see cref="Resources"/> is a main-thread-only API, so the
+        /// asset lookup only ever runs there; anywhere else this returns the last resolved asset —
+        /// warmed at startup — rather than risking an exception.
         /// </summary>
         public static ConsoleContainerSettings Active
         {
             get
             {
+                // Unity's null check, so a destroyed override falls back to the asset.
+                ConsoleContainerSettings runtimeOverride = _override;
+                if (runtimeOverride != null)
+                {
+                    return runtimeOverride;
+                }
+
                 if (!_loaded && Environment.CurrentManagedThreadId == _mainThreadIdentifier)
                 {
                     Load();
@@ -127,23 +195,26 @@ namespace reromanlee.ConsoleContainer
 
                 // Off the main thread, or before the very first load, this is the
                 // last resolved value — never a forbidden Resources call.
-                return _active;
+                return _asset;
             }
+            set => _override = value;
         }
 
         private static void Load()
         {
-            _active = Resources.Load<ConsoleContainerSettings>(ResourcesPath);
+            _asset = Resources.Load<ConsoleContainerSettings>(ResourcesPath);
             _loaded = true;
         }
 
         // Identifying the main thread is what lets Active refuse to touch the
         // Resources API from anywhere else, so it happens at the earliest
-        // initialization step available.
+        // initialization step available. An override left from a previous play
+        // session (when entering play mode skips the domain reload) is dropped too.
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void CaptureMainThread()
         {
             _mainThreadIdentifier = Environment.CurrentManagedThreadId;
+            _override = null;
         }
 
         // Warm the cache on the main thread at startup so console instances that
@@ -159,7 +230,7 @@ namespace reromanlee.ConsoleContainer
         [UnityEditor.InitializeOnLoadMethod]
         private static void PreloadInEditor()
         {
-            CaptureMainThread();
+            _mainThreadIdentifier = Environment.CurrentManagedThreadId;
 
             // The asset database is not guaranteed to answer this early in a
             // domain reload, so resolve the asset once the editor is idle. Any
