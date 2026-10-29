@@ -187,14 +187,14 @@ namespace reromanlee.ConsoleContainer
 
             if (UnityConsoleForwarding.ShouldForward(type))
             {
-                ForwardToUnityConsole(type, source, content);
+                ForwardToUnityConsole(type, message.Label);
             }
 
             RaiseCreated(type, message);
 #else
             if (UnityConsoleForwarding.ShouldForward(type))
             {
-                ForwardToUnityConsole(type, source, content);
+                ForwardToUnityConsole(type, ConsoleMessage.ComposeLabel(source, content));
             }
 
             // Player builds keep no history, so the entry is only worth
@@ -325,20 +325,18 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
-        private static void ForwardToUnityConsole(ConsoleMessageType type, string source, string content)
+        private static void ForwardToUnityConsole(ConsoleMessageType type, string label)
         {
-            string formatted = $"{source}: {content}";
-
             switch (type)
             {
                 case ConsoleMessageType.Text:
-                    Debug.Log(formatted);
+                    Debug.Log(label);
                     break;
                 case ConsoleMessageType.Warning:
-                    Debug.LogWarning(formatted);
+                    Debug.LogWarning(label);
                     break;
                 case ConsoleMessageType.Error:
-                    Debug.LogError(formatted);
+                    Debug.LogError(label);
                     break;
             }
         }

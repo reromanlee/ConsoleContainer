@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Threading;
 
 namespace reromanlee.ConsoleContainer
@@ -10,7 +11,16 @@ namespace reromanlee.ConsoleContainer
     /// </summary>
     public sealed class ConsoleMessage
     {
+        private const string TimeFormat = "[HH:mm:ss]";
+        private const string LabelSeparator = ": ";
+
         private static long _globalSequence;
+
+        // Derived text is built on first use and kept, so rows being re-bound or handlers
+        // formatting the same message allocate nothing more. Racing threads can only ever
+        // store equal strings, so no lock is needed.
+        private string label;
+        private string timeText;
 
         /// <summary>
         /// Globally monotonic creation order. Because it is assigned atomically
@@ -20,8 +30,10 @@ namespace reromanlee.ConsoleContainer
         /// </summary>
         public long Sequence { get; }
 
+        /// <summary>Severity of the message.</summary>
         public ConsoleMessageType Type { get; }
 
+        /// <summary>Local time at which the message was created.</summary>
         public DateTime Timestamp { get; }
 
         /// <summary>The resolved source name (a string, or an object's type name).</summary>
@@ -33,7 +45,7 @@ namespace reromanlee.ConsoleContainer
         /// <summary>Source-resolvable call stack, innermost caller first. Empty in player builds.</summary>
         public IReadOnlyList<CallstackFrame> Callstack { get; }
 
-        public ConsoleMessage(ConsoleMessageType type, string source, string content, IReadOnlyList<CallstackFrame> callstack)
+        internal ConsoleMessage(ConsoleMessageType type, string source, string content, IReadOnlyList<CallstackFrame> callstack)
         {
             Timestamp = DateTime.Now;
             Sequence = Interlocked.Increment(ref _globalSequence);
@@ -43,10 +55,16 @@ namespace reromanlee.ConsoleContainer
             Callstack = callstack ?? Array.Empty<CallstackFrame>();
         }
 
-        /// <summary>Timestamp rendered as "[HH:mm:ss]" for the <c>message-time</c> label.</summary>
-        public string TimeText => Timestamp.ToString("[HH:mm:ss]");
+        /// <summary>Timestamp as "[HH:mm:ss]", formatted identically on every machine regardless of culture.</summary>
+        public string TimeText => timeText ??= Timestamp.ToString(TimeFormat, CultureInfo.InvariantCulture);
 
-        /// <summary>Full "{source}: {content}" text used by both list rows and the details pane.</summary>
-        public string Label => $"{Source}: {Content}";
+        /// <summary>
+        /// "{source}: {content}", or just the source when there is no content. The same text is shown
+        /// in the viewer and written to the Unity log when a message is forwarded.
+        /// </summary>
+        public string Label => label ??= ComposeLabel(Source, Content);
+
+        internal static string ComposeLabel(string source, string content)
+            => string.IsNullOrEmpty(content) ? source : string.Concat(source, LabelSeparator, content);
     }
 }
