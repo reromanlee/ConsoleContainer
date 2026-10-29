@@ -14,6 +14,8 @@ namespace reromanlee.ConsoleContainer
     public static class ConsoleInstanceExtensions
     {
         private const string ContentSeparator = " ";
+        private const string ExceptionSeparator = ": ";
+        private const string MissingException = "Exception: null";
 
         [HideInCallstack]
         public static void CreateText(this IConsoleInstance console, object source, string message)
@@ -38,6 +40,31 @@ namespace reromanlee.ConsoleContainer
         [HideInCallstack]
         public static void CreateError(this IConsoleInstance console, object source, params string[] messageContent)
             => CreateJoined(console, ConsoleMessageType.Error, source, messageContent);
+
+        /// <summary>
+        /// Creates an <see cref="ConsoleMessageType.Error"/> that reports <paramref name="exception"/>:
+        /// its content reads "{ExceptionType}: {Message}", its call stack is where the exception was
+        /// thrown, and <see cref="ConsoleMessage.Exception"/> hands the original object to handlers.
+        /// </summary>
+        [HideInCallstack]
+        public static void CreateException(this IConsoleInstance console, object source, Exception exception)
+        {
+            if (console == null)
+            {
+                throw new ArgumentNullException(nameof(console));
+            }
+
+            if (!console.IsEnabled(ConsoleMessageType.Error))
+            {
+                return;
+            }
+
+            string content = exception == null
+                ? MissingException
+                : string.Concat(SourceNames.Of(exception.GetType()), ExceptionSeparator, exception.Message);
+
+            console.Create(ConsoleMessageType.Error, SourceNames.Resolve(source), content, exception);
+        }
 
         [HideInCallstack]
         private static void CreateSingle(IConsoleInstance console, ConsoleMessageType type, object source, string message)

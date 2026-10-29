@@ -42,16 +42,26 @@ namespace reromanlee.ConsoleContainer
         /// <summary>The message body (all content arguments joined by single spaces).</summary>
         public string Content { get; }
 
-        /// <summary>Source-resolvable call stack, innermost caller first. Empty in player builds.</summary>
+        /// <summary>
+        /// Source-resolvable call stack, innermost caller first — the exception's own stack when
+        /// <see cref="Exception"/> is set. Empty in player builds.
+        /// </summary>
         public IReadOnlyList<CallstackFrame> Callstack { get; }
 
-        internal ConsoleMessage(ConsoleMessageType type, string source, string content, IReadOnlyList<CallstackFrame> callstack)
+        /// <summary>
+        /// The exception this message reports, or null. Handed to handlers as is, so crash reporters
+        /// receive the original object; in the editor it stays referenced while the message is kept.
+        /// </summary>
+        public Exception Exception { get; }
+
+        internal ConsoleMessage(ConsoleMessageType type, string source, string content, Exception exception, IReadOnlyList<CallstackFrame> callstack)
         {
             Timestamp = DateTime.Now;
             Sequence = Interlocked.Increment(ref _globalSequence);
             Type = type;
             Source = source ?? string.Empty;
             Content = content ?? string.Empty;
+            Exception = exception;
             Callstack = callstack ?? Array.Empty<CallstackFrame>();
         }
 

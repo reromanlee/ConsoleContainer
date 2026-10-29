@@ -21,6 +21,9 @@ namespace reromanlee.ConsoleContainer
         private const char GeneratedNameEnd = '>';
         private const string StateMachineMethod = "MoveNext";
 
+        // Bounds the inner-exception walk, which also guards against a pathological cycle.
+        private const int MaximumExceptionDepth = 16;
+
         private static readonly ConcurrentDictionary<MethodBase, MethodDetails> Methods =
             new ConcurrentDictionary<MethodBase, MethodDetails>();
 
@@ -34,17 +37,62 @@ namespace reromanlee.ConsoleContainer
         private static List<CallstackFrame> _scratch;
 
         /// <summary>Captures the calling thread's stack, without the logging methods themselves.</summary>
-        internal static CallstackFrame[] FromCurrentThread() => Convert(new StackTrace(1, true).GetFrames());
-
-        private static CallstackFrame[] Convert(StackFrame[] frames)
+        internal static CallstackFrame[] FromCurrentThread()
         {
-            if (frames == null || frames.Length == 0)
+            List<CallstackFrame> resolved = BeginCapture();
+            Append(new StackTrace(1, true).GetFrames(), resolved);
+            return EndCapture(resolved);
+        }
+
+        /// <summary>
+        /// Captures where <paramref name="exception"/> was thrown, innermost exception first, so the
+        /// top frame is the original throw site — the order .NET itself prints them in. An exception
+        /// that was never thrown carries no stack, and falls back to the logging site instead.
+        /// </summary>
+        internal static CallstackFrame[] FromException(Exception exception)
+        {
+            List<CallstackFrame> resolved = BeginCapture();
+
+            Exception[] chain = new Exception[MaximumExceptionDepth];
+            int depth = 0;
+            for (Exception current = exception; current != null && depth < chain.Length; current = current.InnerException)
             {
-                return Array.Empty<CallstackFrame>();
+                chain[depth++] = current;
             }
 
-            List<CallstackFrame> resolved = _scratch ??= new List<CallstackFrame>(frames.Length);
+            for (int i = depth - 1; i >= 0; i--)
+            {
+                Append(new StackTrace(chain[i], true).GetFrames(), resolved);
+            }
+
+            if (resolved.Count == 0)
+            {
+                Append(new StackTrace(1, true).GetFrames(), resolved);
+            }
+
+            return EndCapture(resolved);
+        }
+
+        private static List<CallstackFrame> BeginCapture()
+        {
+            List<CallstackFrame> resolved = _scratch ??= new List<CallstackFrame>(32);
             resolved.Clear();
+            return resolved;
+        }
+
+        private static CallstackFrame[] EndCapture(List<CallstackFrame> resolved)
+        {
+            CallstackFrame[] result = resolved.Count == 0 ? Array.Empty<CallstackFrame>() : resolved.ToArray();
+            resolved.Clear();
+            return result;
+        }
+
+        private static void Append(StackFrame[] frames, List<CallstackFrame> resolved)
+        {
+            if (frames == null)
+            {
+                return;
+            }
 
             foreach (StackFrame frame in frames)
             {
@@ -70,10 +118,6 @@ namespace reromanlee.ConsoleContainer
 
                 resolved.Add(new CallstackFrame(FilePaths.GetOrAdd(file, file), line, details.DisplayName));
             }
-
-            CallstackFrame[] result = resolved.Count == 0 ? Array.Empty<CallstackFrame>() : resolved.ToArray();
-            resolved.Clear();
-            return result;
         }
 
         private static MethodDetails DescribeMethod(MethodBase method)

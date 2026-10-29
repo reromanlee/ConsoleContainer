@@ -167,8 +167,13 @@ namespace reromanlee.ConsoleContainer
         /// <param name="type">Severity of the message.</param>
         /// <param name="source">Name of whatever produced the message; "null" when empty.</param>
         /// <param name="content">Message body.</param>
+        /// <param name="exception">
+        /// Exception the message reports, if any. Its stack trace replaces the logging site's, and a
+        /// forwarded error goes through <see cref="Debug.LogException(Exception)"/> so crash reporters
+        /// hooked into the Unity log see a real exception.
+        /// </param>
         [HideInCallstack]
-        public void Create(ConsoleMessageType type, string source, string content)
+        public void Create(ConsoleMessageType type, string source, string content, Exception exception = null)
         {
             if (IsDisposed)
             {
@@ -181,7 +186,11 @@ namespace reromanlee.ConsoleContainer
 #if UNITY_EDITOR
             // The editor keeps every message for the viewer, so the entry is
             // always built.
-            ConsoleMessage message = new ConsoleMessage(type, source, content, CallstackCapture.FromCurrentThread());
+            CallstackFrame[] callstack = exception != null
+                ? CallstackCapture.FromException(exception)
+                : CallstackCapture.FromCurrentThread();
+
+            ConsoleMessage message = new ConsoleMessage(type, source, content, exception, callstack);
 
             lock (_gate)
             {
@@ -192,21 +201,21 @@ namespace reromanlee.ConsoleContainer
 
             if (UnityConsoleForwarding.ShouldForward(type))
             {
-                ForwardToUnityConsole(type, message.Label);
+                ForwardToUnityConsole(type, message.Label, exception);
             }
 
             RaiseCreated(type, message);
 #else
             if (UnityConsoleForwarding.ShouldForward(type))
             {
-                ForwardToUnityConsole(type, ConsoleMessage.ComposeLabel(source, content));
+                ForwardToUnityConsole(type, ConsoleMessage.ComposeLabel(source, content), exception);
             }
 
             // Player builds keep no history, so the entry is only worth
             // allocating when something is actually listening for it.
             if (HasListener(type))
             {
-                RaiseCreated(type, new ConsoleMessage(type, source, content, null));
+                RaiseCreated(type, new ConsoleMessage(type, source, content, exception, null));
             }
 #endif
         }
@@ -375,8 +384,14 @@ namespace reromanlee.ConsoleContainer
         }
 
         [HideInCallstack]
-        private static void ForwardToUnityConsole(ConsoleMessageType type, string label)
+        private static void ForwardToUnityConsole(ConsoleMessageType type, string label, Exception exception)
         {
+            if (exception != null && type == ConsoleMessageType.Error)
+            {
+                Debug.LogException(exception);
+                return;
+            }
+
             switch (type)
             {
                 case ConsoleMessageType.Text:

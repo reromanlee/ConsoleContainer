@@ -43,7 +43,8 @@ namespace reromanlee.ConsoleContainer
         /// <param name="type">Severity of the message.</param>
         /// <param name="source">Name of whatever produced the message.</param>
         /// <param name="content">Message body.</param>
-        void Create(ConsoleMessageType type, string source, string content);
+        /// <param name="exception">Exception the message reports, if any; its stack trace replaces the logging site's.</param>
+        void Create(ConsoleMessageType type, string source, string content, Exception exception = null);
 
         /// <summary>Removes every message this instance holds.</summary>
         void Clear();
