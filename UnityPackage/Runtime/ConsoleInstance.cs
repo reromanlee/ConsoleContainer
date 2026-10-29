@@ -22,10 +22,14 @@ namespace reromanlee.ConsoleContainer
     /// static <see cref="Created"/> event reaches every instance at once, so a
     /// single subscriber can cover instances it never constructed.
     ///
-    /// Every <c>Create*</c> method is safe to call concurrently from any thread.
+    /// Every member is safe to call concurrently from any thread. Log through the
+    /// <see cref="ConsoleInstanceExtensions"/> shortcuts (<c>CreateText</c>,
+    /// <c>CreateWarning</c>, <c>CreateError</c>).
     /// </summary>
-    public sealed class ConsoleInstance : IConsoleInstance, IDisposable
+    public sealed class ConsoleInstance : IConsoleInstance
     {
+        private const string MissingSource = "null";
+
         // Above this many entries, a cleared instance releases its backing array
         // instead of holding on to capacity it is unlikely to need again.
         private const int ClearedCapacityTrimThreshold = 1024;
@@ -132,23 +136,75 @@ namespace reromanlee.ConsoleContainer
             RaiseCreated(this);
         }
 
-        public void CreateText(object source, params string[] messageContent)
-            => Create(ConsoleMessageType.Text, ResolveSource(source), messageContent);
+        /// <summary>
+        /// Whether a message of <paramref name="type"/> would have any effect right now; false once
+        /// disposed. The editor keeps every message for the viewer, while a player build only acts on
+        /// one that is forwarded to the Unity log or has a subscriber to receive it.
+        /// </summary>
+        public bool IsEnabled(ConsoleMessageType type)
+        {
+            if (IsDisposed)
+            {
+                return false;
+            }
 
-        public void CreateText(string source, params string[] messageContent)
-            => Create(ConsoleMessageType.Text, ResolveSource(source), messageContent);
+#if UNITY_EDITOR
+            return true;
+#else
+            return HasListener(type) || UnityConsoleForwarding.ShouldForward(type);
+#endif
+        }
 
-        public void CreateWarning(object source, params string[] messageContent)
-            => Create(ConsoleMessageType.Warning, ResolveSource(source), messageContent);
+        /// <summary>
+        /// Creates a message from an already resolved source name and content. Prefer the
+        /// <see cref="ConsoleInstanceExtensions"/> shortcuts, which resolve the source and skip the
+        /// work entirely when the message type is disabled.
+        /// </summary>
+        /// <param name="type">Severity of the message.</param>
+        /// <param name="source">Name of whatever produced the message; "null" when empty.</param>
+        /// <param name="content">Message body.</param>
+        public void Create(ConsoleMessageType type, string source, string content)
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
 
-        public void CreateWarning(string source, params string[] messageContent)
-            => Create(ConsoleMessageType.Warning, ResolveSource(source), messageContent);
+            source = string.IsNullOrEmpty(source) ? MissingSource : source;
+            content ??= string.Empty;
 
-        public void CreateError(object source, params string[] messageContent)
-            => Create(ConsoleMessageType.Error, ResolveSource(source), messageContent);
+#if UNITY_EDITOR
+            // The editor keeps every message for the viewer, so the entry is
+            // always built.
+            ConsoleMessage message = new ConsoleMessage(type, source, content, CaptureCallstack());
 
-        public void CreateError(string source, params string[] messageContent)
-            => Create(ConsoleMessageType.Error, ResolveSource(source), messageContent);
+            lock (_gate)
+            {
+                _messages.Add(message);
+            }
+
+            ConsoleRegistry.NotifyMessageAdded(this);
+
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, source, content);
+            }
+
+            RaiseCreated(type, message);
+#else
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, source, content);
+            }
+
+            // Player builds keep no history, so the entry is only worth
+            // allocating when something is actually listening for it.
+            if (HasListener(type))
+            {
+                RaiseCreated(type, new ConsoleMessage(type, source, content, null));
+            }
+#endif
+        }
 
         /// <summary>
         /// Removes every message from this instance. Clearing an already disposed
@@ -210,48 +266,6 @@ namespace reromanlee.ConsoleContainer
             else
             {
                 ConsoleRegistry.Unregister(this);
-            }
-#endif
-        }
-
-        private void Create(ConsoleMessageType type, string source, string[] messageContent)
-        {
-            if (IsDisposed)
-            {
-                return;
-            }
-
-            string content = BuildContent(messageContent);
-
-#if UNITY_EDITOR
-            // The editor keeps every message for the viewer, so the entry is
-            // always built.
-            ConsoleMessage message = new ConsoleMessage(type, source, content, CaptureCallstack());
-
-            lock (_gate)
-            {
-                _messages.Add(message);
-            }
-
-            ConsoleRegistry.NotifyMessageAdded(this);
-
-            if (UnityConsoleForwarding.ShouldForward(type))
-            {
-                ForwardToUnityConsole(type, source, content);
-            }
-
-            RaiseCreated(type, message);
-#else
-            if (UnityConsoleForwarding.ShouldForward(type))
-            {
-                ForwardToUnityConsole(type, source, content);
-            }
-
-            // Player builds keep no history, so the entry is only worth
-            // allocating when something is actually listening for it.
-            if (HasListener(type))
-            {
-                RaiseCreated(type, new ConsoleMessage(type, source, content, null));
             }
 #endif
         }
@@ -329,17 +343,6 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
-        private static string ResolveSource(object source)
-            => source?.GetType().Name ?? "null";
-
-        private static string ResolveSource(string source)
-            => string.IsNullOrEmpty(source) ? "null" : source;
-
-        private static string BuildContent(string[] messageContent)
-            => messageContent == null || messageContent.Length == 0
-                ? string.Empty
-                : string.Join(" ", messageContent);
-
 #if UNITY_EDITOR
         /// <summary>
         /// Copies messages created after <paramref name="afterSequence"/> into
@@ -387,10 +390,10 @@ namespace reromanlee.ConsoleContainer
                 System.Reflection.MethodBase method = frame.GetMethod();
                 Type declaringType = method?.DeclaringType;
 
-                // Skip only this class's own logging methods so the top frame is
+                // Skip only the logging methods themselves so the top frame is
                 // the caller's real log site. Filtering by the package namespace
                 // would wrongly drop user code that lives under it (e.g. samples).
-                if (declaringType == typeof(ConsoleInstance))
+                if (declaringType == typeof(ConsoleInstance) || declaringType == typeof(ConsoleInstanceExtensions))
                 {
                     continue;
                 }
