@@ -20,7 +20,7 @@ namespace reromanlee.ConsoleContainer
         /// </summary>
         public long Sequence { get; }
 
-        public MessageType Type { get; }
+        public ConsoleMessageType Type { get; }
 
         public DateTime Timestamp { get; }
 
@@ -33,7 +33,7 @@ namespace reromanlee.ConsoleContainer
         /// <summary>Source-resolvable call stack, innermost caller first. Empty in player builds.</summary>
         public IReadOnlyList<CallstackFrame> Callstack { get; }
 
-        public ConsoleMessage(MessageType type, string source, string content, IReadOnlyList<CallstackFrame> callstack)
+        public ConsoleMessage(ConsoleMessageType type, string source, string content, IReadOnlyList<CallstackFrame> callstack)
         {
             Timestamp = DateTime.Now;
             Sequence = Interlocked.Increment(ref _globalSequence);

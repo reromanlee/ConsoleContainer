@@ -17,7 +17,7 @@ namespace reromanlee.ConsoleContainer
         public event Action<ConsoleMessage> MessageCreated;
 
         /// <summary>
-        /// Raised for <see cref="MessageType.Error"/> messages only, right after
+        /// Raised for <see cref="ConsoleMessageType.Error"/> messages only, right after
         /// <see cref="MessageCreated"/>. Lets application code react to a failure
         /// (for example by showing a soft-crash screen with the message as the
         /// reason) without inspecting every message's type.

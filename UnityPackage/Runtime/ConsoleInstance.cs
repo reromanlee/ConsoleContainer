@@ -89,7 +89,7 @@ namespace reromanlee.ConsoleContainer
         public event Action<ConsoleMessage> MessageCreated;
 
         /// <summary>
-        /// Raised only for <see cref="MessageType.Error"/> messages, right after
+        /// Raised only for <see cref="ConsoleMessageType.Error"/> messages, right after
         /// <see cref="MessageCreated"/>. Convenience for the common case of
         /// reacting to failures without filtering by type; the same threading and
         /// exception rules as <see cref="MessageCreated"/> apply.
@@ -133,22 +133,22 @@ namespace reromanlee.ConsoleContainer
         }
 
         public void CreateText(object source, params string[] messageContent)
-            => Create(MessageType.Text, ResolveSource(source), messageContent);
+            => Create(ConsoleMessageType.Text, ResolveSource(source), messageContent);
 
         public void CreateText(string source, params string[] messageContent)
-            => Create(MessageType.Text, ResolveSource(source), messageContent);
+            => Create(ConsoleMessageType.Text, ResolveSource(source), messageContent);
 
         public void CreateWarning(object source, params string[] messageContent)
-            => Create(MessageType.Warning, ResolveSource(source), messageContent);
+            => Create(ConsoleMessageType.Warning, ResolveSource(source), messageContent);
 
         public void CreateWarning(string source, params string[] messageContent)
-            => Create(MessageType.Warning, ResolveSource(source), messageContent);
+            => Create(ConsoleMessageType.Warning, ResolveSource(source), messageContent);
 
         public void CreateError(object source, params string[] messageContent)
-            => Create(MessageType.Error, ResolveSource(source), messageContent);
+            => Create(ConsoleMessageType.Error, ResolveSource(source), messageContent);
 
         public void CreateError(string source, params string[] messageContent)
-            => Create(MessageType.Error, ResolveSource(source), messageContent);
+            => Create(ConsoleMessageType.Error, ResolveSource(source), messageContent);
 
         /// <summary>
         /// Removes every message from this instance. Clearing an already disposed
@@ -214,7 +214,7 @@ namespace reromanlee.ConsoleContainer
 #endif
         }
 
-        private void Create(MessageType type, string source, string[] messageContent)
+        private void Create(ConsoleMessageType type, string source, string[] messageContent)
         {
             if (IsDisposed)
             {
@@ -256,11 +256,11 @@ namespace reromanlee.ConsoleContainer
 #endif
         }
 
-        private void RaiseCreated(MessageType type, ConsoleMessage message)
+        private void RaiseCreated(ConsoleMessageType type, ConsoleMessage message)
         {
             Invoke(MessageCreated, message);
 
-            if (type == MessageType.Error)
+            if (type == ConsoleMessageType.Error)
             {
                 Invoke(ErrorCreated, message);
             }
@@ -311,19 +311,19 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
-        private static void ForwardToUnityConsole(MessageType type, string source, string content)
+        private static void ForwardToUnityConsole(ConsoleMessageType type, string source, string content)
         {
             string formatted = $"{source}: {content}";
 
             switch (type)
             {
-                case MessageType.Text:
+                case ConsoleMessageType.Text:
                     Debug.Log(formatted);
                     break;
-                case MessageType.Warning:
+                case ConsoleMessageType.Warning:
                     Debug.LogWarning(formatted);
                     break;
-                case MessageType.Error:
+                case ConsoleMessageType.Error:
                     Debug.LogError(formatted);
                     break;
             }
@@ -437,8 +437,8 @@ namespace reromanlee.ConsoleContainer
 #else
         // Cheap pre-check that keeps a build from allocating a ConsoleMessage
         // nobody would receive.
-        private bool HasListener(MessageType type)
-            => MessageCreated != null || (type == MessageType.Error && ErrorCreated != null);
+        private bool HasListener(ConsoleMessageType type)
+            => MessageCreated != null || (type == ConsoleMessageType.Error && ErrorCreated != null);
 #endif
     }
 }

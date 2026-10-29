@@ -342,8 +342,8 @@ namespace reromanlee.ConsoleContainer.Editor
         {
             VisualTreeAsset asset = message.Type switch
             {
-                MessageType.Warning => messageWarningAsset,
-                MessageType.Error => messageErrorAsset,
+                ConsoleMessageType.Warning => messageWarningAsset,
+                ConsoleMessageType.Error => messageErrorAsset,
                 _ => messageTextAsset
             };
 
