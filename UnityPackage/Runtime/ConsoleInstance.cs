@@ -190,11 +190,14 @@ namespace reromanlee.ConsoleContainer
                     ? CallstackCapture.FromCurrentThread()
                     : Array.Empty<CallstackFrame>();
 
-            ConsoleMessage message = new ConsoleMessage(type, source, content, exception, callstack);
-
             int limit = EditorHistoryPolicy.MessageLimit;
+            ConsoleMessage message;
+
+            // Built under the lock so sequence numbers are handed out in the order messages enter
+            // the history; threads logging concurrently could otherwise store them out of order.
             lock (_gate)
             {
+                message = new ConsoleMessage(type, source, content, exception, callstack);
                 _history.Add(message, limit);
             }
 
