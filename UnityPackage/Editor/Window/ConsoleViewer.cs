@@ -89,7 +89,7 @@ namespace reromanlee.ConsoleContainer.Editor
         // Set from any logging thread; the editor loop does the actual work on the main thread.
         private volatile bool dirty;
 
-        [MenuItem("Tools/Console Viewer")]
+        [MenuItem("Window/General/Console Viewer")]
         public static void ShowWindow()
         {
             GetWindow<ConsoleViewer>().Show();
