@@ -3,10 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using Debug = UnityEngine.Debug;
 
-#if UNITY_EDITOR
-using System.Diagnostics;
-#endif
-
 namespace reromanlee.ConsoleContainer
 {
     /// <summary>
@@ -184,7 +180,7 @@ namespace reromanlee.ConsoleContainer
 #if UNITY_EDITOR
             // The editor keeps every message for the viewer, so the entry is
             // always built.
-            ConsoleMessage message = new ConsoleMessage(type, source, content, CaptureCallstack());
+            ConsoleMessage message = new ConsoleMessage(type, source, content, CallstackCapture.FromCurrentThread());
 
             lock (_gate)
             {
@@ -424,68 +420,6 @@ namespace reromanlee.ConsoleContainer
             {
                 return _messages.Count > 0;
             }
-        }
-
-        private static CallstackFrame[] CaptureCallstack()
-        {
-            StackFrame[] frames = new StackTrace(true).GetFrames();
-            if (frames == null)
-            {
-                return Array.Empty<CallstackFrame>();
-            }
-
-            List<CallstackFrame> result = new List<CallstackFrame>(frames.Length);
-            foreach (StackFrame frame in frames)
-            {
-                System.Reflection.MethodBase method = frame.GetMethod();
-                Type declaringType = method?.DeclaringType;
-
-                // Skip only the logging methods themselves so the top frame is
-                // the caller's real log site. Filtering by the package namespace
-                // would wrongly drop user code that lives under it (e.g. samples).
-                if (declaringType == typeof(ConsoleInstance) || declaringType == typeof(ConsoleInstanceExtensions))
-                {
-                    continue;
-                }
-
-                string file = frame.GetFileName();
-                int line = frame.GetFileLineNumber();
-                if (string.IsNullOrEmpty(file) || line <= 0)
-                {
-                    // Engine/native frame with no source info — can't open in an IDE.
-                    continue;
-                }
-
-                result.Add(new CallstackFrame(file, line, ResolveMethodName(declaringType, method)));
-            }
-
-            return result.ToArray();
-        }
-
-        // Presents compiler-generated iterator/async frames ("<Method>d__N.MoveNext")
-        // using their original source method name.
-        private static string ResolveMethodName(Type declaringType, System.Reflection.MethodBase method)
-        {
-            if (declaringType == null)
-            {
-                return method?.Name;
-            }
-
-            string typeName = declaringType.Name;
-            string methodName = method?.Name;
-
-            if (typeName.Length > 0 && typeName[0] == '<')
-            {
-                int end = typeName.IndexOf('>');
-                if (end > 1)
-                {
-                    methodName = typeName.Substring(1, end - 1);
-                    Type outer = declaringType.DeclaringType;
-                    typeName = outer != null ? outer.Name : typeName;
-                }
-            }
-
-            return $"{typeName}.{methodName}";
         }
 #else
         // Cheap pre-check that keeps a build from allocating a ConsoleMessage
