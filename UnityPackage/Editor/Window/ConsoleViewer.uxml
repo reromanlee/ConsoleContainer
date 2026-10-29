@@ -5,6 +5,10 @@
             <uie:ToolbarButton name="clear-button" text="Clear" tooltip="Clear the selected instance, or every instance while All Instances is selected."/>
             <uie:ToolbarMenu name="instance-menu" class="console-viewer__instance-menu" tooltip="Instance to show."/>
             <uie:ToolbarSpacer class="console-viewer__toolbar-spacer"/>
+            <uie:ToolbarSearchField name="search-field" class="console-viewer__search" tooltip="Show only messages whose source or content contains this text (case-insensitive)."/>
+            <uie:ToolbarToggle name="text-toggle" class="console-viewer__type-toggle" value="true" tooltip="Show Text messages."/>
+            <uie:ToolbarToggle name="warning-toggle" class="console-viewer__type-toggle" value="true" tooltip="Show Warning messages."/>
+            <uie:ToolbarToggle name="error-toggle" class="console-viewer__type-toggle" value="true" tooltip="Show Error messages."/>
         </uie:Toolbar>
         <ui:TwoPaneSplitView name="main-split-view" orientation="Vertical" fixed-pane-index="1" fixed-pane-initial-dimension="150">
             <ui:ListView name="message-list" class="console-viewer__message-list" virtualization-method="FixedHeight" fixed-item-height="18" selection-type="Single" show-alternating-row-backgrounds="ContentOnly"/>

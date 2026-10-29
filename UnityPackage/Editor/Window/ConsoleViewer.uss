@@ -25,6 +25,32 @@
     min-height: 60px;
 }
 
+.console-viewer__search {
+    width: 180px;
+    min-width: 80px;
+    flex-shrink: 1;
+}
+
+.console-viewer__type-toggle {
+    min-width: 44px;
+}
+
+.console-viewer__type-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    margin-right: 2px;
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/info.png?fileID=2800000&guid=82f57434a9e7fca479ac49d21bc55e98&type=3#info");
+}
+
+.console-viewer__type-icon--warning {
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/warning.png?fileID=2800000&guid=8d98323fa783d0a47a1498bcc7fb5a98&type=3#warning");
+}
+
+.console-viewer__type-icon--error {
+    background-image: url("project://database/Packages/com.reromanlee.consolecontainer/Editor/Textures/error.png?fileID=2800000&guid=5ac7acc60d94c444d8561bdf4d6004ef&type=3#error");
+}
+
 /* Message rows */
 
 .message-row {

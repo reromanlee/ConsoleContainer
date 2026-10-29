@@ -21,6 +21,9 @@ namespace reromanlee.ConsoleContainer.Editor
         private const string LightThemeClass = "console-viewer--light";
         private const string CallstackButtonClass = "callstack-button";
         private const string LoadErrorClass = "console-viewer__load-error";
+        private const string TypeIconClass = "console-viewer__type-icon";
+        private const string CountOverflowText = "999+";
+        private const int MaximumShownCount = 999;
         private const string CopyCommand = "Copy";
         private const float RowHeight = 18f;
 
@@ -44,11 +47,17 @@ namespace reromanlee.ConsoleContainer.Editor
         [SerializeField] private float callstackPaneSize;
         [SerializeField] private float scrollOffset;
         [SerializeField] private string selectedInstanceName = string.Empty;
+        [SerializeField] private string searchText = string.Empty;
+        [SerializeField] private bool showText = true;
+        [SerializeField] private bool showWarnings = true;
+        [SerializeField] private bool showErrors = true;
 
         private readonly MessageFeed feed = new MessageFeed();
         private readonly HashSet<string> usedInstanceLabels = new HashSet<string>();
         private readonly List<string> instanceLabels = new List<string>();
         private readonly int[] selectionBuffer = new int[1];
+        private readonly ToolbarToggle[] typeToggles = new ToolbarToggle[3];
+        private readonly int[] shownCounts = { -1, -1, -1 };
 
         private ToolbarMenu instanceMenu;
         private ListView messageList;
@@ -155,6 +164,10 @@ namespace reromanlee.ConsoleContainer.Editor
             ToolbarButton clearButton = Find<ToolbarButton>(root, "clear-button", missing);
             ToolbarButton copyButton = Find<ToolbarButton>(root, "copy-button", missing);
             instanceMenu = Find<ToolbarMenu>(root, "instance-menu", missing);
+            ToolbarSearchField searchField = Find<ToolbarSearchField>(root, "search-field", missing);
+            typeToggles[(int)ConsoleMessageType.Text] = Find<ToolbarToggle>(root, "text-toggle", missing);
+            typeToggles[(int)ConsoleMessageType.Warning] = Find<ToolbarToggle>(root, "warning-toggle", missing);
+            typeToggles[(int)ConsoleMessageType.Error] = Find<ToolbarToggle>(root, "error-toggle", missing);
             messageList = Find<ListView>(root, "message-list", missing);
             mainSplitView = Find<TwoPaneSplitView>(root, "main-split-view", missing);
             detailsSplitView = Find<TwoPaneSplitView>(root, "details-split-view", missing);
@@ -178,6 +191,14 @@ namespace reromanlee.ConsoleContainer.Editor
 
             clearButton.clicked += OnClearClicked;
             copyButton.clicked += CopySelected;
+
+            searchField.SetValueWithoutNotify(searchText ?? string.Empty);
+            searchField.RegisterValueChangedCallback(OnSearchChanged);
+            feed.SetSearch(searchText);
+
+            SetUpTypeToggle(ConsoleMessageType.Text, showText);
+            SetUpTypeToggle(ConsoleMessageType.Warning, showWarnings);
+            SetUpTypeToggle(ConsoleMessageType.Error, showErrors);
 
             detailsLabel.selection.isSelectable = true;
 
@@ -251,6 +272,9 @@ namespace reromanlee.ConsoleContainer.Editor
             {
                 RefreshList(change, reloaded: false);
             }
+
+            // Messages of a hidden type change the counts without changing the list.
+            UpdateCounts();
         }
 
         #region Instances
@@ -426,6 +450,73 @@ namespace reromanlee.ConsoleContainer.Editor
 
         #endregion
 
+        #region Filters
+
+        private void SetUpTypeToggle(ConsoleMessageType type, bool shown)
+        {
+            ToolbarToggle toggle = typeToggles[(int)type];
+
+            // The icon sits before the count inside the toggle's own content.
+            VisualElement icon = new VisualElement { pickingMode = PickingMode.Ignore };
+            icon.AddToClassList(TypeIconClass);
+            icon.AddToClassList($"{TypeIconClass}--{type.ToString().ToLowerInvariant()}");
+            VisualElement content = toggle.Q(className: Toggle.inputUssClassName) ?? toggle;
+            content.Insert(0, icon);
+
+            toggle.SetValueWithoutNotify(shown);
+            toggle.RegisterValueChangedCallback(evt => OnTypeToggled(type, evt.newValue));
+            feed.SetTypeEnabled(type, shown);
+        }
+
+        private void OnTypeToggled(ConsoleMessageType type, bool shown)
+        {
+            switch (type)
+            {
+                case ConsoleMessageType.Text:
+                    showText = shown;
+                    break;
+                case ConsoleMessageType.Warning:
+                    showWarnings = shown;
+                    break;
+                case ConsoleMessageType.Error:
+                    showErrors = shown;
+                    break;
+            }
+
+            if (feed.SetTypeEnabled(type, shown))
+            {
+                RefreshList(FeedChange.Reordered, reloaded: true);
+            }
+        }
+
+        private void OnSearchChanged(ChangeEvent<string> evt)
+        {
+            searchText = evt.newValue ?? string.Empty;
+            if (feed.SetSearch(searchText))
+            {
+                RefreshList(FeedChange.Reordered, reloaded: true);
+            }
+        }
+
+        // Labels are only rewritten when a count actually changes, so a steady stream of messages
+        // allocates no strings for them.
+        private void UpdateCounts()
+        {
+            for (int i = 0; i < typeToggles.Length; i++)
+            {
+                int count = feed.GetCount((ConsoleMessageType)i);
+                if (count == shownCounts[i])
+                {
+                    continue;
+                }
+
+                shownCounts[i] = count;
+                typeToggles[i].text = count > MaximumShownCount ? CountOverflowText : count.ToString();
+            }
+        }
+
+        #endregion
+
         #region Message list
 
         private void BindRow(VisualElement element, int index)
@@ -456,6 +547,8 @@ namespace reromanlee.ConsoleContainer.Editor
             {
                 ResyncSelection();
             }
+
+            UpdateCounts();
 
             if (restoreScrollPending)
             {
