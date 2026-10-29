@@ -12,7 +12,8 @@ namespace reromanlee.ConsoleContainer
     ///
     /// Messages logged from the same places repeat the same frames endlessly, so per-method
     /// details and file paths are resolved once and shared: a retained message only pays for its
-    /// own frame array, never for another copy of the same strings.
+    /// own frame array, never for another copy of the same strings. The attribute lookup that
+    /// decides whether a frame is hidden runs once per method for the same reason.
     /// </summary>
     internal static class CallstackCapture
     {
@@ -79,11 +80,14 @@ namespace reromanlee.ConsoleContainer
         {
             Type declaringType = method.DeclaringType;
 
-            // Only the logging path itself is skipped, so the top frame is the caller's log site.
-            // Filtering by namespace would wrongly drop user code that lives under it (samples).
+            // The logging path itself is skipped, so the top frame is the caller's log site, and so is
+            // anything marked [HideInCallstack] — the same attribute the Unity Console honours — which
+            // lets a project's own logging wrappers drop out too. Filtering by namespace instead would
+            // wrongly drop user code that lives under it (samples).
             bool isHidden = declaringType == typeof(ConsoleInstance)
                             || declaringType == typeof(ConsoleInstanceExtensions)
-                            || declaringType == typeof(CallstackCapture);
+                            || declaringType == typeof(CallstackCapture)
+                            || method.IsDefined(typeof(UnityEngine.HideInCallstackAttribute), false);
 
             return new MethodDetails(ResolveMethodName(declaringType, method), isHidden);
         }

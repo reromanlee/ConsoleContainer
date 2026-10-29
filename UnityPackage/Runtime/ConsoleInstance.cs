@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Debug = UnityEngine.Debug;
+using UnityEngine;
 
 namespace reromanlee.ConsoleContainer
 {
@@ -167,6 +167,7 @@ namespace reromanlee.ConsoleContainer
         /// <param name="type">Severity of the message.</param>
         /// <param name="source">Name of whatever produced the message; "null" when empty.</param>
         /// <param name="content">Message body.</param>
+        [HideInCallstack]
         public void Create(ConsoleMessageType type, string source, string content)
         {
             if (IsDisposed)
@@ -373,6 +374,7 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
+        [HideInCallstack]
         private static void ForwardToUnityConsole(ConsoleMessageType type, string label)
         {
             switch (type)
