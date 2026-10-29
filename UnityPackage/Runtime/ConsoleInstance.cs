@@ -184,7 +184,7 @@ namespace reromanlee.ConsoleContainer
 #if UNITY_EDITOR
             // The editor keeps every message for the viewer, so the entry is
             // always built.
-            CallstackFrame[] callstack = exception != null
+            IReadOnlyList<CallstackFrame> callstack = exception != null
                 ? CallstackCapture.FromException(exception)
                 : EditorHistoryPolicy.ShouldCaptureCallstack(type)
                     ? CallstackCapture.FromCurrentThread()
