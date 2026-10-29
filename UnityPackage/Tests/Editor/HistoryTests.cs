@@ -83,6 +83,25 @@ namespace reromanlee.ConsoleContainer.Editor.Tests
         }
 
         [Test]
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        public void Callstack_TellsCallSitesInOneMethodApart_AndSharesRepeatedOnes()
+        {
+            ConsoleInstance console = scope.Create();
+
+            for (int i = 0; i < 2; i++)
+            {
+                console.CreateText("Source", "first");
+                console.CreateText("Source", "second");
+            }
+
+            List<ConsoleMessage> history = History(console);
+            Assert.That(history[1].Callstack[0].Line, Is.Not.EqualTo(history[0].Callstack[0].Line));
+            Assert.That(history[2].Callstack[0].Line, Is.EqualTo(history[0].Callstack[0].Line));
+            Assert.That(history[3].Callstack[0].Line, Is.EqualTo(history[1].Callstack[0].Line));
+            Assert.That(history[2].Callstack, Is.SameAs(history[0].Callstack));
+        }
+
+        [Test]
         public void Callstack_NamesLambdasAfterTheirMethod()
         {
             ConsoleInstance console = scope.Create();
