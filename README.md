@@ -4,7 +4,7 @@ Named, per-system log containers for Unity that keep debug output out of the Uni
 
 Create a `ConsoleInstance` for each system, such as Networking, AI or Save System, and log through it from any thread. The Console Viewer window shows one instance or every instance merged in chronological order, with type filters, search, and stack frames that open in your IDE, while the Unity Console stays reserved for engine and third-party output.
 
-It is built for production: messages raise events in player builds too, so an error can drive a soft-crash screen or a crash reporter. Dropped messages cost nothing in builds, the editor bounds its history, and a misbehaving handler can never crash the process. It behaves identically under Mono and IL2CPP, on desktop, mobile and WebGL.
+It is built for production: messages raise events in player builds too, so an error can drive a soft-crash screen or a crash reporter. Dropped messages cost nothing in builds, the editor bounds its history, and a throwing or endlessly recursive handler cannot break logging. It has no platform-specific code and runs under Mono and IL2CPP with managed code stripping.
 
 ![Console Viewer showcase](.github/readme-console-viewer.gif)
 

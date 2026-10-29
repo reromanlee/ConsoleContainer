@@ -33,7 +33,7 @@ Player builds keep no history and capture no call stacks, so a message only cost
 | With a call stack, logged six calls deep | ~44 µs |
 | Without a call stack | 0.2 µs |
 
-**Call stacks are the cost.** Capturing one is Mono's stack walk, which runs at roughly 3 to 5 µs per managed frame in the editor: about 10 µs with three frames on the stack and 100 µs with twenty-three. Unity's own `StackTraceUtility`, which `Debug.Log` uses, measured 16 to 58 µs on the same stacks. Turn off **Capture call stack** for a message type in the settings when it is logged on a hot path.
+**Call stacks are the cost.** Capturing one is Mono's stack walk, which runs at roughly 3 to 5 µs per managed frame in the editor: about 10 µs with three frames on the stack and 100 µs with twenty-three. Unity's own `StackTraceUtility.ExtractStackTrace` measured 16 to 58 µs on the same stacks. Turn off **Capture call stack** for a message type in the settings when it is logged on a hot path.
 
 ### Editor memory
 

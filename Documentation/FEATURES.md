@@ -95,4 +95,4 @@ Forwarded messages use `Debug.Log`, `Debug.LogWarning` and `Debug.LogError` with
 1. Every member of `ConsoleInstance` is safe to call from any thread, including jobs and async code.
 2. Logging never throws because of a handler, a destroyed settings override, or a missing settings asset.
 3. A viewer whose layout assets are missing shows a readable error instead of a blank, broken window.
-4. Behaviour is identical under Mono and IL2CPP, with managed code stripping, on desktop, mobile and WebGL.
+4. There is no platform-specific code: the runtime relies only on standard .NET threading primitives and Unity's `Debug` and `Resources` APIs, and was verified in an IL2CPP release player with managed code stripping set to High.
