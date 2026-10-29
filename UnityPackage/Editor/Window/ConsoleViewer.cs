@@ -12,9 +12,9 @@ namespace reromanlee.ConsoleContainer.Editor
     /// Editor window listing the messages of one console instance, or of every instance merged in
     /// chronological order, with a details pane for the selected message and its clickable call
     /// stack. The list is virtualized, so its cost depends on the rows on screen rather than on
-    /// how many messages exist.
+    /// how many messages exist. Several windows can be open at once, each with its own view.
     /// </summary>
-    internal sealed class ConsoleViewer : EditorWindow
+    internal sealed class ConsoleViewer : EditorWindow, IHasCustomMenu
     {
         private const string WindowName = "Console Viewer";
         private const string AllInstancesLabel = "All Instances";
@@ -93,6 +93,18 @@ namespace reromanlee.ConsoleContainer.Editor
         public static void ShowWindow()
         {
             GetWindow<ConsoleViewer>().Show();
+        }
+
+        // The tab's context menu opens another viewer, so two instances can be watched side by
+        // side; each window keeps its own selection, filters and layout.
+        public void AddItemsToMenu(GenericMenu menu)
+        {
+            menu.AddItem(new GUIContent("New Console Viewer"), false, OpenNewWindow);
+        }
+
+        private static void OpenNewWindow()
+        {
+            CreateWindow<ConsoleViewer>().Show();
         }
 
         private ConsoleInstance SelectedInstance =>
