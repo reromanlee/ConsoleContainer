@@ -1,0 +1,65 @@
+name: Tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  checks: write
+
+jobs:
+  unity:
+    name: Unity ${{ matrix.unityVersion }} ${{ matrix.testMode }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with the minimum version in UnityPackage/package.json and the latest supported LTS.
+        unityVersion: [2022.3.62f3, 6000.0.85f1]
+        testMode: [EditMode, PlayMode]
+    env:
+      UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+    steps:
+      # Secrets are unavailable to forks and to repositories that have not set them up yet; the job then
+      # passes with a notice instead of failing, so the workflow stays inert until a license is configured.
+      - name: Check Unity license
+        id: license
+        run: |
+          if [ -n "$UNITY_LICENSE" ]; then
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Unity tests skipped. Add the UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD repository secrets to run them."
+          fi
+
+      - name: Checkout
+        if: steps.license.outputs.available == 'true'
+        uses: actions/checkout@v4
+
+      - name: Run tests
+        if: steps.license.outputs.available == 'true'
+        uses: game-ci/unity-test-runner@v4
+        with:
+          packageMode: true
+          projectPath: UnityPackage
+          unityVersion: ${{ matrix.unityVersion }}
+          testMode: ${{ matrix.testMode }}
+          artifactsPath: artifacts
+          githubToken: ${{ secrets.GITHUB_TOKEN }}
+          checkName: Unity ${{ matrix.unityVersion }} ${{ matrix.testMode }} results
+
+      - name: Upload results
+        if: always() && steps.license.outputs.available == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ matrix.unityVersion }}-${{ matrix.testMode }}
+          path: artifacts
