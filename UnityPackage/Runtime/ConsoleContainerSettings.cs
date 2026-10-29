@@ -32,6 +32,9 @@ namespace reromanlee.ConsoleContainer
         /// <summary>Per-type editor call stack capture used when no settings asset exists.</summary>
         internal const bool DefaultCaptureCallstack = true;
 
+        /// <summary>Most messages each instance keeps in the editor when no settings asset exists.</summary>
+        internal const int DefaultMaxMessagesPerInstance = 10000;
+
         [Header("Player build logging")]
         [Tooltip("Forward Text messages to Debug.Log in player builds.")]
         [SerializeField] private bool logTextInBuild = true;
@@ -59,6 +62,11 @@ namespace reromanlee.ConsoleContainer
         [SerializeField] private bool logErrorsInEditor = DefaultLogInEditor;
 
         [Header("Editor history")]
+        [Tooltip("Most messages each instance keeps in the editor; once reached, the oldest are dropped " +
+                 "first. Bounds memory in long sessions. 0 keeps everything.")]
+        [Min(0)]
+        [SerializeField] private int maxMessagesPerInstance = DefaultMaxMessagesPerInstance;
+
         [Tooltip("Capture a clickable call stack for Text messages in the editor. Stack capture is by far " +
                  "the most expensive part of a log call; turn it off for messages logged on hot paths.")]
         [SerializeField] private bool captureTextCallstack = DefaultCaptureCallstack;
@@ -80,6 +88,9 @@ namespace reromanlee.ConsoleContainer
         public bool LogTextInEditor => logTextInEditor;
         public bool LogWarningsInEditor => logWarningsInEditor;
         public bool LogErrorsInEditor => logErrorsInEditor;
+
+        /// <summary>Most messages each instance keeps in the editor before dropping the oldest; 0 keeps everything.</summary>
+        public int MaxMessagesPerInstance => maxMessagesPerInstance;
 
         /// <summary>Whether Text messages capture a call stack in the editor.</summary>
         public bool CaptureTextCallstack => captureTextCallstack;

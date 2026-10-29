@@ -26,10 +26,6 @@ namespace reromanlee.ConsoleContainer
     {
         private const string MissingSource = "null";
 
-        // Above this many entries, a cleared instance releases its backing array
-        // instead of holding on to capacity it is unlikely to need again.
-        private const int ClearedCapacityTrimThreshold = 1024;
-
         // How deeply handlers may log from inside other handlers on one thread before events stop
         // being raised. Generous for legitimate chains, far below any stack limit.
         private const int MaximumDispatchDepth = 8;
@@ -40,8 +36,10 @@ namespace reromanlee.ConsoleContainer
         [ThreadStatic]
         private static int _dispatchDepth;
 
+#if UNITY_EDITOR
         private readonly object _gate = new object();
-        private readonly List<ConsoleMessage> _messages = new List<ConsoleMessage>();
+        private readonly MessageBuffer _history = new MessageBuffer();
+#endif
 
         private int _disposed;
 
@@ -194,9 +192,10 @@ namespace reromanlee.ConsoleContainer
 
             ConsoleMessage message = new ConsoleMessage(type, source, content, exception, callstack);
 
+            int limit = EditorHistoryPolicy.MessageLimit;
             lock (_gate)
             {
-                _messages.Add(message);
+                _history.Add(message, limit);
             }
 
             ConsoleRegistry.NotifyMessageAdded(this);
@@ -225,21 +224,17 @@ namespace reromanlee.ConsoleContainer
         /// <summary>
         /// Removes every message from this instance. Clearing an already disposed
         /// instance also drops it from the viewer, since nothing is left to
-        /// inspect and a stale entry would only crowd the dropdown.
+        /// inspect and a stale entry would only crowd the dropdown. Player builds
+        /// keep no history, so there it does nothing.
         /// </summary>
         public void Clear()
         {
+#if UNITY_EDITOR
             lock (_gate)
             {
-                _messages.Clear();
-
-                if (_messages.Capacity > ClearedCapacityTrimThreshold)
-                {
-                    _messages.Capacity = 0;
-                }
+                _history.Clear();
             }
 
-#if UNITY_EDITOR
             if (IsDisposed)
             {
                 ConsoleRegistry.Unregister(this);
@@ -419,16 +414,17 @@ namespace reromanlee.ConsoleContainer
         {
             lock (_gate)
             {
-                // _messages is append-only and therefore already sorted ascending
+                // History is kept oldest first and therefore sorted ascending
                 // by Sequence, so the new messages are a contiguous suffix.
-                for (int i = _messages.Count - 1; i >= 0; i--)
+                for (int i = _history.Count - 1; i >= 0; i--)
                 {
-                    if (_messages[i].Sequence <= afterSequence)
+                    ConsoleMessage message = _history[i];
+                    if (message.Sequence <= afterSequence)
                     {
                         break;
                     }
 
-                    buffer.Add(_messages[i]);
+                    buffer.Add(message);
                 }
             }
         }
@@ -437,7 +433,7 @@ namespace reromanlee.ConsoleContainer
         {
             lock (_gate)
             {
-                return _messages.Count > 0;
+                return _history.Count > 0;
             }
         }
 #else
