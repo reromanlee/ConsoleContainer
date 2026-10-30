@@ -6,7 +6,7 @@ Create a `ConsoleInstance` for each system, such as Networking, AI or Save Syste
 
 It is built for production: messages raise events in player builds too, so an error can drive a soft-crash screen or a crash reporter. Dropped messages cost nothing in builds, the editor bounds its history, and a throwing or endlessly recursive handler cannot break logging. It has no platform-specific code and runs under Mono and IL2CPP with managed code stripping.
 
-![Console Viewer showcase](.github/readme-console-viewer.gif)
+![Console Viewer showcase](.github/ConsoleContainerDemo.gif)
 
 ### Features
 
