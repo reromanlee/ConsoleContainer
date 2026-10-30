@@ -41,18 +41,21 @@ jobs:
             echo "::notice::Unity tests skipped. Add the UNITY_LICENSE, UNITY_EMAIL and UNITY_PASSWORD repository secrets to run them."
           fi
 
+      # Actions and the game-ci CLI are pinned to exact versions, so the code that receives the Unity secrets
+      # changes only through a reviewed commit here.
       - name: Checkout
         if: steps.license.outputs.available == 'true'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Run tests
         if: steps.license.outputs.available == 'true'
-        uses: game-ci/unity-test-runner@v4
+        uses: game-ci/unity-test-runner@32e57712352b500e17974b245a6dce9e11a73213 # v4.4.0
         # A "latest" cliVersion is resolved through the GitHub API, which the action authenticates only via this
         # variable, not the githubToken input; unauthenticated calls hit the shared runner IP rate limit (403).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          cliVersion: v0.1.72
           packageMode: true
           projectPath: UnityPackage
           unityVersion: ${{ matrix.unityVersion }}
@@ -63,7 +66,7 @@ jobs:
 
       - name: Upload results
         if: always() && steps.license.outputs.available == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: test-results-${{ matrix.unityVersion }}-${{ matrix.testMode }}
           path: artifacts
