@@ -99,6 +99,24 @@
     text-overflow: ellipsis;
 }
 
+.message-row__instance {
+    flex-direction: row;
+    flex-shrink: 0;
+    max-width: 35%;
+    margin-left: 8px;
+}
+
+.message-row__instance-name {
+    flex-shrink: 1;
+    margin: 0;
+    padding: 0;
+    opacity: 0.55;
+    -unity-text-align: middle-right;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .message-row--warning > .message-row__text {
     color: rgb(254, 193, 7);
 }

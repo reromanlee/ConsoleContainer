@@ -55,6 +55,7 @@ namespace reromanlee.ConsoleContainer.Editor
         private readonly MessageFeed feed = new MessageFeed();
         private readonly HashSet<string> usedInstanceLabels = new HashSet<string>();
         private readonly List<string> instanceLabels = new List<string>();
+        private readonly Dictionary<ConsoleInstance, string> instanceDisplayNames = new Dictionary<ConsoleInstance, string>();
         private readonly int[] selectionBuffer = new int[1];
         private readonly ToolbarToggle[] typeToggles = new ToolbarToggle[3];
         private readonly int[] shownCounts = { -1, -1, -1 };
@@ -317,11 +318,14 @@ namespace reromanlee.ConsoleContainer.Editor
             usedInstanceLabels.Add(AllInstancesLabel);
             instanceLabels.Clear();
             instanceLabels.Add(AllInstancesLabel);
+            instanceDisplayNames.Clear();
 
             int restoredIndex = 0;
             for (int i = 0; i < currentInstances.Length; i++)
             {
-                instanceLabels.Add(BuildDisplayName(currentInstances[i]));
+                string displayName = BuildDisplayName(currentInstances[i]);
+                instanceLabels.Add(displayName);
+                instanceDisplayNames[currentInstances[i]] = displayName;
                 if (currentInstances[i] == previous)
                 {
                     restoredIndex = i + 1;
@@ -348,6 +352,11 @@ namespace reromanlee.ConsoleContainer.Editor
 
             RebuildInstanceMenu();
             ApplyScope(forceReload);
+
+            if (selectedMessage != null)
+            {
+                detailsInstanceLabel.text = DisplayNameOf(selectedMessage.Owner);
+            }
         }
 
         private void RebuildInstanceMenu()
@@ -372,7 +381,8 @@ namespace reromanlee.ConsoleContainer.Editor
             instanceMenu.text = instanceLabels[Mathf.Clamp(selectedViewIndex, 0, instanceLabels.Count - 1)];
         }
 
-        private void SelectView(int index)
+        /// <summary>Shows All Instances at index 0, or the instance at that position in the menu.</summary>
+        internal void SelectView(int index)
         {
             // The registry can change between the menu opening and an entry being picked.
             if (index < 0 || index >= instanceLabels.Count || index > currentInstances.Length)
@@ -396,6 +406,9 @@ namespace reromanlee.ConsoleContainer.Editor
 
             if (!forceReload && HaveSameInstances(scope, feedScope))
             {
+                // Same messages, but an instance may have been relabeled, or the view switched
+                // between All Instances and its only instance; rebinding touches visible rows only.
+                messageList.RefreshItems();
                 return;
             }
 
@@ -452,6 +465,23 @@ namespace reromanlee.ConsoleContainer.Editor
 
             return label;
         }
+
+        // Rows and the details pane name an instance exactly as the menu does, so a message can be
+        // traced to the entry that isolates it. An instance missing from the last rebuild (one
+        // removed a moment ago) falls back to its plain name.
+        private string DisplayNameOf(ConsoleInstance instance)
+        {
+            if (instance == null)
+            {
+                return string.Empty;
+            }
+
+            return instanceDisplayNames.TryGetValue(instance, out string displayName) ? displayName : instance.Name;
+        }
+
+        /// <summary>The instance name a row shows for <paramref name="message"/>; null while one instance is selected.</summary>
+        internal string RowInstanceName(ConsoleMessage message) =>
+            selectedViewIndex == 0 ? DisplayNameOf(message.Owner) : null;
 
         // Menus treat '/' as a submenu separator, so it is shown as a look-alike division slash.
         private static string DecorateDisplayName(string name, bool isDisposed)
@@ -557,7 +587,8 @@ namespace reromanlee.ConsoleContainer.Editor
             List<ConsoleMessage> visible = feed.Visible;
             if (element is MessageRow row && index >= 0 && index < visible.Count)
             {
-                row.Bind(visible[index]);
+                ConsoleMessage message = visible[index];
+                row.Bind(message, RowInstanceName(message));
             }
         }
 
@@ -668,7 +699,7 @@ namespace reromanlee.ConsoleContainer.Editor
         {
             selectedMessage = message;
             detailsLabel.text = MessageDetails.ForDisplay(message);
-            detailsInstanceLabel.text = message.Owner != null ? message.Owner.Name : string.Empty;
+            detailsInstanceLabel.text = DisplayNameOf(message.Owner);
             BuildCallstack(message);
         }
 
