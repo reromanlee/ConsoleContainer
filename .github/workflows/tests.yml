@@ -48,6 +48,10 @@ jobs:
       - name: Run tests
         if: steps.license.outputs.available == 'true'
         uses: game-ci/unity-test-runner@v4
+        # A "latest" cliVersion is resolved through the GitHub API, which the action authenticates only via this
+        # variable, not the githubToken input; unauthenticated calls hit the shared runner IP rate limit (403).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           packageMode: true
           projectPath: UnityPackage
