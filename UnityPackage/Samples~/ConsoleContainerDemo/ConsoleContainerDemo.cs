@@ -1,6 +1,8 @@
+using System;
 using System.Collections;
 using System.Threading;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 namespace reromanlee.ConsoleContainer.Samples
 {
@@ -10,12 +12,14 @@ namespace reromanlee.ConsoleContainer.Samples
     /// (<c>Tools ▸ Console Viewer</c>) fills up with realistic, per-context
     /// traffic.
     ///
-    /// Drop it on any GameObject and press Play, then open the viewer and switch
-    /// the instance dropdown between "Networking", "AI", "Worker (bg thread)",
-    /// "Crash Reporter" and "All Instances". The worker instance logs from a
-    /// background thread to demonstrate that logging is safe from any context,
-    /// and the crash reporter shows how outside code reacts to logged errors
-    /// through <see cref="IConsoleInstance.ErrorCreated"/>.
+    /// Drop it on any GameObject and press Play, then open the viewer
+    /// (<c>Window ▸ General ▸ Console Viewer</c>) and switch the instance menu
+    /// between "Networking", "AI", "Worker (bg thread)", "Crash Reporter" and
+    /// "All Instances". The worker instance logs from a background thread to
+    /// demonstrate that logging is safe from any context, the networking instance
+    /// occasionally reports a caught exception, and the crash reporter shows how
+    /// outside code reacts to logged errors through
+    /// <see cref="IConsoleInstance.ErrorCreated"/>.
     /// </summary>
     [AddComponentMenu("ConsoleContainer/Console Container Demo")]
     public sealed class ConsoleContainerDemo : MonoBehaviour
@@ -116,18 +120,36 @@ namespace reromanlee.ConsoleContainer.Samples
                 float roll = Random.value;
                 if (roll < 0.7f)
                 {
-                    // object overload => source becomes "ConsoleContainerDemo".
+                    // object source => shown as its type name, "ConsoleContainerDemo".
                     networking.CreateText(this, "Received packet", packet.ToString(), "from server");
                 }
                 else if (roll < 0.9f)
                 {
                     networking.CreateWarning(this, "High latency:", Random.Range(120, 350).ToString(), "ms");
                 }
-                else
+                else if (roll < 0.97f)
                 {
-                    // string overload => source becomes "Socket".
+                    // string source => shown as "Socket".
                     networking.CreateError("Socket", "Packet", packet.ToString(), "dropped, retransmitting");
                 }
+                else
+                {
+                    // An exception keeps its own clickable stack: where it was thrown, not where it
+                    // was logged. Handlers receive the original object via message.Exception.
+                    networking.CreateException(this, CatchTimeout(packet));
+                }
+            }
+        }
+
+        private static Exception CatchTimeout(int packet)
+        {
+            try
+            {
+                throw new TimeoutException($"Packet {packet} was not acknowledged in time.");
+            }
+            catch (TimeoutException exception)
+            {
+                return exception;
             }
         }
 

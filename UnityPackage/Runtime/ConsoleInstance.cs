@@ -1,11 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading;
-using Debug = UnityEngine.Debug;
-
-#if UNITY_EDITOR
-using System.Diagnostics;
-#endif
+using UnityEngine;
 
 namespace reromanlee.ConsoleContainer
 {
@@ -22,18 +18,28 @@ namespace reromanlee.ConsoleContainer
     /// static <see cref="Created"/> event reaches every instance at once, so a
     /// single subscriber can cover instances it never constructed.
     ///
-    /// Every <c>Create*</c> method is safe to call concurrently from any thread.
+    /// Every member is safe to call concurrently from any thread. Log through the
+    /// <see cref="ConsoleInstanceExtensions"/> shortcuts (<c>CreateText</c>,
+    /// <c>CreateWarning</c>, <c>CreateError</c>).
     /// </summary>
-    public sealed class ConsoleInstance : IConsoleInstance, IDisposable
+    public sealed class ConsoleInstance : IConsoleInstance
     {
-        // Above this many entries, a cleared instance releases its backing array
-        // instead of holding on to capacity it is unlikely to need again.
-        private const int ClearedCapacityTrimThreshold = 1024;
+        private const string MissingSource = "null";
+
+        // How deeply handlers may log from inside other handlers on one thread before events stop
+        // being raised. Generous for legitimate chains, far below any stack limit.
+        private const int MaximumDispatchDepth = 8;
 
         private static int _instanceCounter;
+        private static int _recursionReported;
 
+        [ThreadStatic]
+        private static int _dispatchDepth;
+
+#if UNITY_EDITOR
         private readonly object _gate = new object();
-        private readonly List<ConsoleMessage> _messages = new List<ConsoleMessage>();
+        private readonly MessageBuffer _history = new MessageBuffer();
+#endif
 
         private int _disposed;
 
@@ -89,7 +95,7 @@ namespace reromanlee.ConsoleContainer
         public event Action<ConsoleMessage> MessageCreated;
 
         /// <summary>
-        /// Raised only for <see cref="MessageType.Error"/> messages, right after
+        /// Raised only for <see cref="ConsoleMessageType.Error"/> messages, right after
         /// <see cref="MessageCreated"/>. Convenience for the common case of
         /// reacting to failures without filtering by type; the same threading and
         /// exception rules as <see cref="MessageCreated"/> apply.
@@ -132,49 +138,113 @@ namespace reromanlee.ConsoleContainer
             RaiseCreated(this);
         }
 
-        public void CreateText(object source, params string[] messageContent)
-            => Create(MessageType.Text, ResolveSource(source), messageContent);
+        /// <summary>
+        /// Whether a message of <paramref name="type"/> would have any effect right now; false once
+        /// disposed. The editor keeps every message for the viewer, while a player build only acts on
+        /// one that is forwarded to the Unity log or has a subscriber to receive it.
+        /// </summary>
+        public bool IsEnabled(ConsoleMessageType type)
+        {
+            if (IsDisposed)
+            {
+                return false;
+            }
 
-        public void CreateText(string source, params string[] messageContent)
-            => Create(MessageType.Text, ResolveSource(source), messageContent);
+#if UNITY_EDITOR
+            return true;
+#else
+            return HasListener(type) || UnityConsoleForwarding.ShouldForward(type);
+#endif
+        }
 
-        public void CreateWarning(object source, params string[] messageContent)
-            => Create(MessageType.Warning, ResolveSource(source), messageContent);
+        /// <summary>
+        /// Creates a message from an already resolved source name and content. Prefer the
+        /// <see cref="ConsoleInstanceExtensions"/> shortcuts, which resolve the source and skip the
+        /// work entirely when the message type is disabled.
+        /// </summary>
+        /// <param name="type">Severity of the message.</param>
+        /// <param name="source">Name of whatever produced the message; "null" when empty.</param>
+        /// <param name="content">Message body.</param>
+        /// <param name="exception">
+        /// Exception the message reports, if any. Its stack trace replaces the logging site's, and a
+        /// forwarded error goes through <see cref="Debug.LogException(Exception)"/> so crash reporters
+        /// hooked into the Unity log see a real exception.
+        /// </param>
+        [HideInCallstack]
+        public void Create(ConsoleMessageType type, string source, string content, Exception exception = null)
+        {
+            if (IsDisposed)
+            {
+                return;
+            }
 
-        public void CreateWarning(string source, params string[] messageContent)
-            => Create(MessageType.Warning, ResolveSource(source), messageContent);
+            source = string.IsNullOrEmpty(source) ? MissingSource : source;
+            content ??= string.Empty;
 
-        public void CreateError(object source, params string[] messageContent)
-            => Create(MessageType.Error, ResolveSource(source), messageContent);
+#if UNITY_EDITOR
+            // The editor keeps every message for the viewer, so the entry is
+            // always built.
+            IReadOnlyList<CallstackFrame> callstack = exception != null
+                ? CallstackCapture.FromException(exception)
+                : EditorHistoryPolicy.ShouldCaptureCallstack(type)
+                    ? CallstackCapture.FromCurrentThread()
+                    : Array.Empty<CallstackFrame>();
 
-        public void CreateError(string source, params string[] messageContent)
-            => Create(MessageType.Error, ResolveSource(source), messageContent);
+            int limit = EditorHistoryPolicy.MessageLimit;
+            ConsoleMessage message;
+
+            // Built under the lock so sequence numbers are handed out in the order messages enter
+            // the history; threads logging concurrently could otherwise store them out of order.
+            lock (_gate)
+            {
+                message = new ConsoleMessage(this, type, source, content, exception, callstack);
+                _history.Add(message, limit);
+            }
+
+            ConsoleRegistry.NotifyMessageAdded();
+
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, message.Label, exception);
+            }
+
+            RaiseCreated(type, message);
+#else
+            if (UnityConsoleForwarding.ShouldForward(type))
+            {
+                ForwardToUnityConsole(type, ConsoleMessage.ComposeLabel(source, content), exception);
+            }
+
+            // Player builds keep no history, so the entry is only worth
+            // allocating when something is actually listening for it.
+            if (HasListener(type))
+            {
+                RaiseCreated(type, new ConsoleMessage(this, type, source, content, exception, null));
+            }
+#endif
+        }
 
         /// <summary>
         /// Removes every message from this instance. Clearing an already disposed
         /// instance also drops it from the viewer, since nothing is left to
-        /// inspect and a stale entry would only crowd the dropdown.
+        /// inspect and a stale entry would only crowd the dropdown. Player builds
+        /// keep no history, so there it does nothing.
         /// </summary>
         public void Clear()
         {
+#if UNITY_EDITOR
             lock (_gate)
             {
-                _messages.Clear();
-
-                if (_messages.Capacity > ClearedCapacityTrimThreshold)
-                {
-                    _messages.Capacity = 0;
-                }
+                _history.Clear();
             }
 
-#if UNITY_EDITOR
+            // Always reported as a clear, so every viewer drops what it copied even when the
+            // instance is about to leave the registry.
+            ConsoleRegistry.NotifyCleared(this);
+
             if (IsDisposed)
             {
                 ConsoleRegistry.Unregister(this);
-            }
-            else
-            {
-                ConsoleRegistry.NotifyCleared(this);
             }
 #endif
         }
@@ -214,65 +284,34 @@ namespace reromanlee.ConsoleContainer
 #endif
         }
 
-        private void Create(MessageType type, string source, string[] messageContent)
+        // Handlers are copied out of the events first, so a concurrent unsubscribe cannot turn an
+        // invocation into a null call.
+        private void RaiseCreated(ConsoleMessageType type, ConsoleMessage message)
         {
-            if (IsDisposed)
+            Action<ConsoleMessage> messageHandler = MessageCreated;
+            Action<ConsoleMessage> errorHandler = type == ConsoleMessageType.Error ? ErrorCreated : null;
+
+            if ((messageHandler == null && errorHandler == null) || !TryEnterDispatch())
             {
                 return;
             }
 
-            string content = BuildContent(messageContent);
-
-#if UNITY_EDITOR
-            // The editor keeps every message for the viewer, so the entry is
-            // always built.
-            ConsoleMessage message = new ConsoleMessage(type, source, content, CaptureCallstack());
-
-            lock (_gate)
+            try
             {
-                _messages.Add(message);
+                Invoke(messageHandler, message);
+                Invoke(errorHandler, message);
             }
-
-            ConsoleRegistry.NotifyMessageAdded(this);
-
-            if (UnityConsoleForwarding.ShouldForward(type))
+            finally
             {
-                ForwardToUnityConsole(type, source, content);
-            }
-
-            RaiseCreated(type, message);
-#else
-            if (UnityConsoleForwarding.ShouldForward(type))
-            {
-                ForwardToUnityConsole(type, source, content);
-            }
-
-            // Player builds keep no history, so the entry is only worth
-            // allocating when something is actually listening for it.
-            if (HasListener(type))
-            {
-                RaiseCreated(type, new ConsoleMessage(type, source, content, null));
-            }
-#endif
-        }
-
-        private void RaiseCreated(MessageType type, ConsoleMessage message)
-        {
-            Invoke(MessageCreated, message);
-
-            if (type == MessageType.Error)
-            {
-                Invoke(ErrorCreated, message);
+                _dispatchDepth--;
             }
         }
 
-        // Mirrors Invoke below: the handler is copied out of the static event first, so a
-        // concurrent unsubscribe cannot turn the invocation into a null call.
         private static void RaiseCreated(IConsoleInstance instance)
         {
             Action<IConsoleInstance> handler = Created;
 
-            if (handler == null)
+            if (handler == null || !TryEnterDispatch())
             {
                 return;
             }
@@ -286,6 +325,39 @@ namespace reromanlee.ConsoleContainer
                 // A faulty subscriber must never break the construction that triggered it.
                 Debug.LogException(exception);
             }
+            finally
+            {
+                _dispatchDepth--;
+            }
+        }
+
+        // A handler that logs into what it observes (or constructs an instance from Created) would
+        // recurse until the stack overflows, which no catch can stop and which takes the whole
+        // process down. Nesting is therefore capped per thread: deeper messages are still kept and
+        // forwarded, only their events are skipped.
+        private static bool TryEnterDispatch()
+        {
+            if (_dispatchDepth >= MaximumDispatchDepth)
+            {
+                ReportRecursion();
+                return false;
+            }
+
+            _dispatchDepth++;
+            return true;
+        }
+
+        private static void ReportRecursion()
+        {
+            if (Interlocked.Exchange(ref _recursionReported, 1) != 0)
+            {
+                return;
+            }
+
+            Debug.LogWarning(
+                $"ConsoleContainer: event handlers kept logging from inside other handlers more than {MaximumDispatchDepth} " +
+                "levels deep. Events for the deeper messages were skipped to prevent a stack overflow; the messages " +
+                "themselves are still kept. This is reported once per session.");
         }
 
         // The handler is copied into a parameter before it is called, so a
@@ -311,57 +383,42 @@ namespace reromanlee.ConsoleContainer
             }
         }
 
-        private static void ForwardToUnityConsole(MessageType type, string source, string content)
+        [HideInCallstack]
+        private static void ForwardToUnityConsole(ConsoleMessageType type, string label, Exception exception)
         {
-            string formatted = $"{source}: {content}";
+            if (exception != null && type == ConsoleMessageType.Error)
+            {
+                Debug.LogException(exception);
+                return;
+            }
 
             switch (type)
             {
-                case MessageType.Text:
-                    Debug.Log(formatted);
+                case ConsoleMessageType.Text:
+                    Debug.Log(label);
                     break;
-                case MessageType.Warning:
-                    Debug.LogWarning(formatted);
+                case ConsoleMessageType.Warning:
+                    Debug.LogWarning(label);
                     break;
-                case MessageType.Error:
-                    Debug.LogError(formatted);
+                case ConsoleMessageType.Error:
+                    Debug.LogError(label);
                     break;
             }
         }
 
-        private static string ResolveSource(object source)
-            => source?.GetType().Name ?? "null";
-
-        private static string ResolveSource(string source)
-            => string.IsNullOrEmpty(source) ? "null" : source;
-
-        private static string BuildContent(string[] messageContent)
-            => messageContent == null || messageContent.Length == 0
-                ? string.Empty
-                : string.Join(" ", messageContent);
-
 #if UNITY_EDITOR
         /// <summary>
-        /// Copies messages created after <paramref name="afterSequence"/> into
-        /// <paramref name="buffer"/>. Consumed by the viewer for incremental
-        /// appends; the caller sorts the merged result by
-        /// <see cref="ConsoleMessage.Sequence"/>.
+        /// Copies every message added since <paramref name="cursor"/> into
+        /// <paramref name="destination"/>, oldest first, and returns the cursor to resume from.
+        /// <paramref name="startPosition"/> receives the cursor of the oldest message still held,
+        /// so a reader can tell which of its copies the history has dropped since.
         /// </summary>
-        internal void CollectMessagesAfter(long afterSequence, List<ConsoleMessage> buffer)
+        internal long CollectSince(long cursor, List<ConsoleMessage> destination, out long startPosition)
         {
             lock (_gate)
             {
-                // _messages is append-only and therefore already sorted ascending
-                // by Sequence, so the new messages are a contiguous suffix.
-                for (int i = _messages.Count - 1; i >= 0; i--)
-                {
-                    if (_messages[i].Sequence <= afterSequence)
-                    {
-                        break;
-                    }
-
-                    buffer.Add(_messages[i]);
-                }
+                startPosition = _history.StartPosition;
+                return _history.CopySince(cursor, destination);
             }
         }
 
@@ -369,76 +426,14 @@ namespace reromanlee.ConsoleContainer
         {
             lock (_gate)
             {
-                return _messages.Count > 0;
+                return _history.Count > 0;
             }
-        }
-
-        private static CallstackFrame[] CaptureCallstack()
-        {
-            StackFrame[] frames = new StackTrace(true).GetFrames();
-            if (frames == null)
-            {
-                return Array.Empty<CallstackFrame>();
-            }
-
-            List<CallstackFrame> result = new List<CallstackFrame>(frames.Length);
-            foreach (StackFrame frame in frames)
-            {
-                System.Reflection.MethodBase method = frame.GetMethod();
-                Type declaringType = method?.DeclaringType;
-
-                // Skip only this class's own logging methods so the top frame is
-                // the caller's real log site. Filtering by the package namespace
-                // would wrongly drop user code that lives under it (e.g. samples).
-                if (declaringType == typeof(ConsoleInstance))
-                {
-                    continue;
-                }
-
-                string file = frame.GetFileName();
-                int line = frame.GetFileLineNumber();
-                if (string.IsNullOrEmpty(file) || line <= 0)
-                {
-                    // Engine/native frame with no source info — can't open in an IDE.
-                    continue;
-                }
-
-                result.Add(new CallstackFrame(file, line, ResolveMethodName(declaringType, method)));
-            }
-
-            return result.ToArray();
-        }
-
-        // Presents compiler-generated iterator/async frames ("<Method>d__N.MoveNext")
-        // using their original source method name.
-        private static string ResolveMethodName(Type declaringType, System.Reflection.MethodBase method)
-        {
-            if (declaringType == null)
-            {
-                return method?.Name;
-            }
-
-            string typeName = declaringType.Name;
-            string methodName = method?.Name;
-
-            if (typeName.Length > 0 && typeName[0] == '<')
-            {
-                int end = typeName.IndexOf('>');
-                if (end > 1)
-                {
-                    methodName = typeName.Substring(1, end - 1);
-                    Type outer = declaringType.DeclaringType;
-                    typeName = outer != null ? outer.Name : typeName;
-                }
-            }
-
-            return $"{typeName}.{methodName}";
         }
 #else
         // Cheap pre-check that keeps a build from allocating a ConsoleMessage
         // nobody would receive.
-        private bool HasListener(MessageType type)
-            => MessageCreated != null || (type == MessageType.Error && ErrorCreated != null);
+        private bool HasListener(ConsoleMessageType type)
+            => MessageCreated != null || (type == ConsoleMessageType.Error && ErrorCreated != null);
 #endif
     }
 }

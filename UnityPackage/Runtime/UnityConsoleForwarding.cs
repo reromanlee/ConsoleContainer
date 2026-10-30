@@ -32,7 +32,7 @@ namespace reromanlee.ConsoleContainer
         /// Safe to call from any thread: when the settings asset has not been
         /// cached yet on the main thread, the package defaults apply.
         /// </summary>
-        internal static bool ShouldForward(MessageType type)
+        internal static bool ShouldForward(ConsoleMessageType type)
         {
             ConsoleContainerSettings settings = ConsoleContainerSettings.Active;
 
@@ -58,11 +58,11 @@ namespace reromanlee.ConsoleContainer
 
             switch (type)
             {
-                case MessageType.Text:
+                case ConsoleMessageType.Text:
                     return settings.LogTextInEditor;
-                case MessageType.Warning:
+                case ConsoleMessageType.Warning:
                     return settings.LogWarningsInEditor;
-                case MessageType.Error:
+                case ConsoleMessageType.Error:
                     return settings.LogErrorsInEditor;
                 default:
                     return false;
@@ -76,11 +76,11 @@ namespace reromanlee.ConsoleContainer
 
             switch (type)
             {
-                case MessageType.Text:
+                case ConsoleMessageType.Text:
                     return settings.LogTextInBuild;
-                case MessageType.Warning:
+                case ConsoleMessageType.Warning:
                     return settings.LogWarningsInBuild;
-                case MessageType.Error:
+                case ConsoleMessageType.Error:
                     return settings.LogErrorsInBuild;
                 default:
                     return false;

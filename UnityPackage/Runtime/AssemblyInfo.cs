@@ -7,3 +7,7 @@ using System.Runtime.CompilerServices;
 // The test runner bridge is its own assembly (it only compiles when the Unity
 // Test Framework is installed) and drives the internal forwarding flag.
 [assembly: InternalsVisibleTo("reromanlee.ConsoleContainer.TestRunnerBridge")]
+
+// The package's own tests exercise the internal history and dispatch plumbing.
+[assembly: InternalsVisibleTo("reromanlee.ConsoleContainer.Tests")]
+[assembly: InternalsVisibleTo("reromanlee.ConsoleContainer.Editor.Tests")]
