@@ -3,7 +3,7 @@
 ### What's new
 
 1. Named console instances: `ConsoleInstance` behind a small `IConsoleInstance` interface, logged to through `CreateText`, `CreateWarning` and `CreateError` extension methods with single-message and content overloads, and a string, `Type` or object as the source.
-2. Console Viewer window (Window ▸ General ▸ Console Viewer): a virtualized list of one instance or all of them merged chronologically, type filters with counts, search, a details pane with clickable call stack frames, Copy and Ctrl+C, Clear and Clear on Play, several windows side by side, remembered per-window state, and Dark and Light skin support.
+2. Console Viewer window (Window ▸ General ▸ Console Viewer): a virtualized list of one instance or all of them merged chronologically with each message's instance named, type filters with counts, search, a details pane with clickable call stack frames, Copy and Ctrl+C, Clear and Clear on Play, several windows side by side, remembered per-window state, and Dark and Light skin support.
 3. `MessageCreated` and `ErrorCreated` events in the editor and player builds, plus the static `ConsoleInstance.Created` to cover every instance at once; throwing handlers are reported without breaking logging, and runaway re-entrant logging is stopped before it can overflow the stack.
 4. `CreateException`, which shows where an exception was thrown, hands the original object to handlers through `ConsoleMessage.Exception`, and is forwarded through `Debug.LogException`.
 5. Dropped messages in player builds allocate nothing, and a `ConsoleMessage` is only created when a handler is subscribed for its type.

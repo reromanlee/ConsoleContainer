@@ -49,7 +49,7 @@ Open it from **Window ▸ General ▸ Console Viewer**.
 
 | Feature | Behaviour |
 | --- | --- |
-| **Instance menu** | One instance, or **All Instances** merged in chronological order. Recreated instances are re-attached by name. |
+| **Instance menu** | One instance, or **All Instances** merged in chronological order, where each row names its instance on the right, exactly as the menu lists it. Recreated instances are re-attached by name. |
 | **Virtualized list** | Only rows on screen exist, so cost depends on the window size, not on how many messages there are. |
 | **Type filters** | Toggle Text, Warning and Error, each showing its count (search-aware, capped at `999+`). |
 | **Search** | Case-insensitive match over source and content, applied to new messages as they arrive. |
