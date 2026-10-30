@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Linq;
 using NUnit.Framework;
@@ -40,6 +41,9 @@ namespace reromanlee.ConsoleContainer.Editor.Tests
         }
 
         private ListView MessageList => window.rootVisualElement.Q<ListView>("message-list");
+
+        private ConsoleMessage Shown(string content) =>
+            MessageList.itemsSource.Cast<ConsoleMessage>().First(message => message.Content == content);
 
         private static IEnumerator Settle()
         {
@@ -89,6 +93,62 @@ namespace reromanlee.ConsoleContainer.Editor.Tests
 
             string[] shown = MessageList.itemsSource.Cast<ConsoleMessage>().Select(message => message.Content).ToArray();
             Assert.That(shown, Is.EqualTo(new[] { "viewer-search-match" }));
+        }
+
+        [UnityTest]
+        public IEnumerator AllInstances_NamesInstancesAsTheMenuDoes()
+        {
+            ConsoleInstance first = scope.Create("Viewer Instance");
+            ConsoleInstance second = scope.Create("Viewer Instance");
+            first.CreateText("Source", "from-first");
+            second.CreateText("Source", "from-second");
+            yield return Settle();
+
+            Assert.That(window.RowInstanceName(Shown("from-first")), Is.EqualTo("Viewer Instance"));
+            Assert.That(window.RowInstanceName(Shown("from-second")), Is.EqualTo("Viewer Instance (2)"));
+
+            first.Dispose();
+            yield return Settle();
+
+            Assert.That(window.RowInstanceName(Shown("from-first")), Is.EqualTo("Viewer Instance (disposed)"));
+        }
+
+        [UnityTest]
+        public IEnumerator SingleInstance_HidesInstanceNames()
+        {
+            ConsoleInstance console = scope.Create("Viewer Instance");
+            console.CreateText("Source", "single-view");
+            yield return Settle();
+
+            window.SelectView(Array.IndexOf(ConsoleRegistry.Snapshot(), console) + 1);
+            yield return Settle();
+            Assert.That(window.RowInstanceName(Shown("single-view")), Is.Null);
+
+            window.SelectView(0);
+            yield return Settle();
+            Assert.That(window.RowInstanceName(Shown("single-view")), Is.EqualTo("Viewer Instance"));
+        }
+
+        [Test]
+        public void Row_ShowsTheInstanceNameOnlyWhenGiven()
+        {
+            ConsoleInstance console = scope.Create("Row Test");
+            ConsoleMessage message = null;
+            console.MessageCreated += created => message = created;
+            console.CreateText("Source", "row");
+
+            MessageRow row = new MessageRow();
+            VisualElement instance = row.Q(className: MessageRow.InstanceClass);
+
+            row.Bind(message, "Row Test");
+            Assert.That(instance.Q<Label>(className: MessageRow.InstanceNameClass).text, Is.EqualTo("Row Test"));
+            Assert.That(instance.style.display.value, Is.EqualTo(DisplayStyle.Flex));
+
+            row.Bind(message, null);
+            Assert.That(instance.style.display.value, Is.EqualTo(DisplayStyle.None));
+
+            row.Bind(message, "Row Test");
+            Assert.That(instance.style.display.value, Is.EqualTo(DisplayStyle.Flex));
         }
 
         [UnityTest]
